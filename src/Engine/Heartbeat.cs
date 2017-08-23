@@ -37,8 +37,6 @@ public class Heartbeat {
         });
     }
     public void Stop() {
-        throw new Exception("");
-
 
         p_Stop = true;
         while (!p_StopVerify) ;
@@ -46,7 +44,7 @@ public class Heartbeat {
         p_Thread = null;
 
 
-        Console.WriteLine("Thread: "+p_Name+" has stopped!");
+        Console.WriteLine("Thread: " + p_Name + " has stopped!");
     }
     public void ForceStop() {
         p_Thread.Abort();

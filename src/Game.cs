@@ -37,9 +37,11 @@ public class Game {
         initPlayers();
         initLogic();
         initUI();
+        initDebug();
         initDraw();
 
         /*hook events*/
+        wnd.MouseLeave += handleMouseLeave;
         wnd.Click += handleMouseClick;
         wnd.MouseWheel += handleMouseScroll;
         wnd.MouseMove += handleMouseMove;
@@ -49,6 +51,7 @@ public class Game {
         wnd.Resize += handleResize;
         wnd.GotFocus += handleFocusChanged;
         wnd.LostFocus += handleFocusChanged;
+        
         wnd.HookCoreEvents();
 
         testCode();
@@ -81,7 +84,68 @@ public class Game {
         p_CurrentPlayer.Fog.UpdateLOS();
     }
 
+    #region Rendering
+    private Heartbeat p_RenderHeartbeat;
+    private void initDraw() {
+        p_RenderHeartbeat = new Heartbeat("renderer");
+        p_RenderHeartbeat.Speed(-1);
+        p_RenderHeartbeat.Start(
+            this,
+            draw);
+
+    }
+
+    private void draw(object state) {
+        //is the window minimized?
+        if (p_Window.WindowState == FormWindowState.Minimized) {
+            return;
+        }
+
+        Game game = state as Game;
+        IRenderContext context = game.p_Window.Context;
+        IRenderer renderer = game.p_Window.Renderer;
+        renderer.BeginFrame(game.p_Window.Context);
+        renderer.SetColor(Color.Black);
+        renderer.Clear();
+
+        p_Map.Draw(context, renderer);
+
+        drawUI(context, renderer);
+
+        renderer.EndFrame();
+    }
+    
+    private string getPointString(Point pt) {
+        return pt.X + "x" + pt.Y;
+    }
+    private string getSizeString(Size sz) {
+        return sz.Width + "x" + sz.Height;
+    }
+    private string getHeartbeatString(Heartbeat h) {
+        return
+            "[r]" + h.Rate + "bps " +
+            "[c]" + h.TotalFrames + " " +
+            "[avg]" + h.AverageLatency.ToString("0.00") + "ms " +
+            "[lat]" + h.LastLatency.ToString("0.00") + "ms";
+
+    }
+
+    
+    #endregion
+
+    #region Debug
+    private UILabel p_DebugLabel;
     private bool p_DebugPrompt = false;
+    private bool p_DebugFull = true;
+
+    private void initDebug() {
+        p_DebugLabel = (UILabel)addUI(new UILabel(this));
+        p_DebugLabel.TextAlignment = TextAlign.Right;
+        p_DebugLabel.ForeBrush = Brushes.White;
+        p_DebugLabel.Font = new Font("Arial", 12, FontStyle.Bold);
+        p_DebugLabel.Disable();
+    }
+
     private void debugPrompt() {
         if (p_DebugPrompt) { return; }
 
@@ -133,9 +197,15 @@ public class Game {
             case "toggle":
 
                 if (txt[1] == "debug") {
-                    p_DrawDebug = !p_DrawDebug;
+                    p_DebugLabel.Visible = !p_DebugLabel.Visible;
+                    if (p_DebugLabel.Visible) {
+                        p_DebugLabel.Enable();
+                    }
+                    else {
+                        p_DebugLabel.Disable();
+                    }
                     if (txt.Length == 3 && txt[2] == "full") {
-                        p_DrawDebugFull = !p_DrawDebugFull;
+                        p_DebugFull = !p_DebugFull;
                     }
                 }
                 if (txt[1] == "fog") {
@@ -162,71 +232,14 @@ public class Game {
 
     }
 
-    #region Rendering
-    private Heartbeat p_RenderHeartbeat;
-    private void initDraw() {
-        p_RenderHeartbeat = new Heartbeat("renderer");
-        p_RenderHeartbeat.Speed(-1);
-        p_RenderHeartbeat.Start(
-            this,
-            draw);
-
-    }
-
-    private void draw(object state) {
-        //is the window minimized?
-        if (p_Window.WindowState == FormWindowState.Minimized) {
-            return;
-        }
-
-        Game game = state as Game;
-        IRenderContext context = game.p_Window.Context;
-        IRenderer renderer = game.p_Window.Renderer;
-        renderer.BeginFrame(game.p_Window.Context);
-        renderer.SetColor(Color.Black);
-        renderer.Clear();
-
-        p_Map.Draw(context, renderer);
-
-        drawUI(context, renderer);
-        drawDebug(context, renderer);
-
-        renderer.EndFrame();
-    }
-    private void drawUI(IRenderContext context, IRenderer renderer) {
-        //draw all ui elements
-        int l = p_UIElements.Length;
-        for (int c = 0; c < l; c++) {
-            p_UIElements[c].Draw(context, renderer);
-        }
-    }
-
-    private bool p_DrawDebug = true;
-    private bool p_DrawDebugFull = true;
-    private string getPointString(Point pt) {
-        return pt.X + "x" + pt.Y;
-    }
-    private string getSizeString(Size sz) {
-        return sz.Width + "x" + sz.Height;
-    }
-    private string getHeartbeatString(Heartbeat h) {
-        return
-            "[r]" + h.Rate + "bps " +
-            "[c]" + h.TotalFrames + " " +
-            "[avg]" + h.AverageLatency.ToString("0.00") + "ms " +
-            "[lat]" + h.LastLatency.ToString("0.00") + "ms";
-
-    }
-
     public delegate T Func<T>();
-
-    private void drawDebug(IRenderContext context, IRenderer renderer) {
-        if (!p_DrawDebug) { return; }
+    private void updateDebug() {
+        #region get debug string
         string dbgString = p_RenderHeartbeat.Rate + "fps";
 
         Fog fog = p_CurrentPlayer.Fog;
 
-        if (p_DrawDebugFull) {
+        if (p_DebugFull) {
             Point mousePosition = Point.Empty;
             try {
                 mousePosition = (Point)p_Window.Invoke((Func<Point>)delegate {
@@ -237,7 +250,6 @@ public class Game {
 
             VisibleBlock blockAtCursor = p_Map.TryGetBlockAtPoint(p_Window.Context, mousePosition);
             dbgString =
-
                 "Keys: keys[" + p_CurrentKeys + "] arw[" + p_ArrowKeyDown + "]\n" +
                 "Camera position: " + p_Camera.X + "x" + p_Camera.Y + "\n" +
                 "Blocks rendered: " + p_Map.VisibleBlocks.Count + "\n" +
@@ -252,22 +264,12 @@ public class Game {
                 "Render: " + getHeartbeatString(p_RenderHeartbeat) + "\n" +
                 "Logic: " + getHeartbeatString(p_LogicHeartbeat);
         }
+        #endregion
 
-        Font font = new Font("Arial", 13, FontStyle.Bold);
-        renderer.SetFont(font);
-
-
-        Size size = renderer.MeasureString(dbgString);
-
-        renderer.SetBrush(Brushes.White);
-        renderer.SetPen(Pens.Black);
-
-
-        renderer.DrawString(
-            dbgString, 
-            0, 
-            context.Height - size.Height);
-
+        p_DebugLabel.Text = dbgString;
+        p_DebugLabel.Location = new Point(
+            p_Window.Context.Width - p_DebugLabel.Width - 10,
+            p_Window.Context.Height - p_DebugLabel.Height);
     }
     #endregion
 
@@ -296,7 +298,8 @@ public class Game {
         Game game = state as Game;
         game.updateMouse();
         game.updateCamera();
-        updateUI();
+        updateDebug();
+        updateUI();      
 
         /*has the window closed?*/
         if (p_Window.Closed) {
@@ -437,7 +440,7 @@ public class Game {
           mouse moves and the mouse is down, the event is called.
          Native MouseDown event does not have this behavior*/
         if (e.Button != MouseButtons.None) {
-            handleMouseDown(e);
+            handleMouseDown(sender, e);
             return;
         }
 
@@ -447,7 +450,7 @@ public class Game {
             p_UIElements[c].OnMouseMove(this, p_MousePosition, e);
         }
     }
-    private void handleMouseDown(MouseEventArgs e) {
+    private void handleMouseDown(object sender, MouseEventArgs e) {
         if (p_LogicDisabled) { return; }
         p_MouseDown = true;
 
@@ -505,23 +508,25 @@ public class Game {
     private void handleMouseClick(object sender, EventArgs e) {
         if (p_MouseDown || p_LogicDisabled) { return; }
 
+
+        pathTest(p_MousePosition);
+
         //clear selected
         uiBlocksSelected(null);
-
-
-        Point mousePosition = p_Window.PointToClient(Cursor.Position);
-        pathTest(mousePosition);
+       
         MouseEventArgs args = e as MouseEventArgs;
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseClick(this, mousePosition, args);
+            p_EventHijacker.OnMouseClick(this, p_MousePosition, args);
         }
 
         int l = p_UIElements.Length;
         for (int c = 0; c < l; c++) {
-            p_UIElements[c].OnMouseClick(this, mousePosition, args);
+            p_UIElements[c].OnMouseClick(this, p_MousePosition, args);
         }
     }
-
+    private void handleMouseLeave(object sender, EventArgs e) {
+        p_MousePosition = p_Window.PointToClient(Cursor.Position);
+    }
 
     int pathState = 0;
     Point pathStart;
@@ -541,7 +546,6 @@ public class Game {
             
         }
 
-
         VisibleBlock vBlock = default(VisibleBlock);
         try {
             vBlock = Map.GetBlockAtPoint(p_Window.Context, mousePosition);
@@ -553,6 +557,8 @@ public class Game {
         Block* block = vBlock.Block;
         if (block == (Block*)0) { return; }
         if ((*block).StateID != -1) { return; }
+
+        Console.WriteLine(pathState);
 
         switch (pathState) { 
             case 0:
@@ -566,6 +572,10 @@ public class Game {
                     Map.GetConcreteMatrix(),
                     Map.Width,
                     Map.Height);
+
+                if (path.Count == 0) {
+                    MessageBox.Show("Path not found!");
+                }
 
                 foreach (Point p in path) {
 
@@ -618,7 +628,8 @@ public class Game {
                 debugPrompt();
                 break;
             case Keys.F3:
-                p_DrawDebug = !p_DrawDebug;
+                p_DebugLabel.Visible = true;
+                p_DebugLabel.Enable();
                 break;
 
             /*arrow key pressed?*/
@@ -755,9 +766,19 @@ public class Game {
     private void updateUI() { 
         int l = p_UIElements.Length;
         for (int c = 0; c < l; c++) {
+            if (!p_UIElements[c].Enabled) { continue; }
             p_UIElements[c].Update();
         }
     }
+    private void drawUI(IRenderContext context, IRenderer renderer) {
+        //draw all ui elements
+        int l = p_UIElements.Length;
+        for (int c = 0; c < l; c++) {
+            if (!p_UIElements[c].Visible) { continue; }
+            p_UIElements[c].Draw(context, renderer);
+        }
+    }
+
 
     private IUI addUI(IUI ui) {
         Array.Resize(ref p_UIElements, p_UIElements.Length + 1);
@@ -846,8 +867,8 @@ public class Game {
     private void crash(string reason, Exception ex) {
         //disable everything
         try {
-            p_RenderHeartbeat.Stop();
-            p_LogicHeartbeat.Stop();
+            p_RenderHeartbeat.ForceStop();
+            p_LogicHeartbeat.ForceStop();
         }
         catch { }
 
@@ -857,7 +878,7 @@ public class Game {
         p_Window.Click -= handleMouseClick;
         p_Window.MouseMove -= handleMouseMove;
         p_Window.MouseUp -= handleMouseUp;
-       // p_Window.MouseDown -= handleMouseDown;
+        p_Window.MouseDown -= handleMouseDown;
         p_Window.MouseWheel -= handleMouseScroll;
         p_Window.KeyDown -= handleKeyDown;
         p_Window.KeyUp -= handleKeyUp;
@@ -870,6 +891,9 @@ public class Game {
         string repString = crashToFile(ex, null, out filename);
         
         //any key to exit
+        p_Window.FormClosing += delegate(object sender, FormClosingEventArgs e) {
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
+        };
         p_Window.KeyDown += delegate(object sender, KeyEventArgs e) {
             if (e.KeyCode == Keys.F3) {
                 p_RenderHeartbeat.Stop();

@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 
-public class UIClickDrag : IUI {
+public sealed class UIClickDrag : IUI {
     private bool p_Enabled;
     private Point p_StartPosition;
 
@@ -120,6 +120,12 @@ public class UIClickDrag : IUI {
     }
 
     public bool Enabled { get { return p_Enabled; } }
+    public bool Visible {
+        get { return true; }
+        set {
+            throw new NotSupportedException();
+        }
+    }
 
     public event OnBlocksSelectedEventHandler BlocksSelected;
     

@@ -14,6 +14,8 @@ public class GDIPRenderer : IRenderer {
     private Bitmap p_Frame;
     private Graphics p_FrameBuffer;
 
+    private bool p_InFrame;
+
     private Brush p_Brush;
     private Pen p_Pen;
     private Color p_Color;
@@ -28,6 +30,7 @@ public class GDIPRenderer : IRenderer {
 
     public void BeginFrame(IRenderContext ctx) {
         p_Context = ctx;
+        p_InFrame = true;
 
         //create a new buffer?
         if (p_Frame == null ||
@@ -50,10 +53,12 @@ public class GDIPRenderer : IRenderer {
             return;
         }
 
+        p_InFrame = true;
         p_Context = ctx;
         p_FrameBuffer = (ctx as GDIPRenderContext).Graphics;
     }
-    public void EndFrame() {        
+    public void EndFrame() {
+        p_InFrame = false;
         if (!p_Buffered) {
             p_FrameBuffer.Flush();
             return; 
@@ -69,6 +74,13 @@ public class GDIPRenderer : IRenderer {
 
         //clean up
         p_Context = null;
+    }
+
+    public void SetContext(IRenderContext ctx) {
+        if (p_InFrame) {
+            throw new Exception("Cannot change context during a frame render!");
+        }
+        p_Context = ctx;
     }
 
     public void Lock() {
@@ -155,7 +167,7 @@ public class GDIPRenderer : IRenderer {
             bmp,
             x, y);
     }
-    
+
 
     public override string ToString() {
         return "GDI+" + typeof(Graphics).Assembly.ImageRuntimeVersion;

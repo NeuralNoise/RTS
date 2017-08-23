@@ -1,9 +1,9 @@
 ﻿using System;
 
 public static partial class Pathfinder {
-    private unsafe struct PathfinderASNode {
-        public PathfinderASNode* Parent;
-        public PathfinderASNodeState State;
+    private unsafe struct ASNode {
+        public ASNode* Parent;
+        public ASNodeState State;
 
         public int X;
         public int Y;

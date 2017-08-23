@@ -9,10 +9,12 @@ using System.Threading;
 public unsafe class Map : IDisposable {
     private Game p_Game;
     private Block* p_Matrix;
+    private BlockStates<ResourceState> p_States;
+
     private bool* p_ConcreteMatrix;
     private int p_Width, p_Height;
-    private BlockStates<ResourceState> p_States;
     private object p_Mutex = new object();
+
 
     private bool p_UpdateVisibleBlocks = true;
     private LinkedList<VisibleBlock> p_VisibleBlocks;

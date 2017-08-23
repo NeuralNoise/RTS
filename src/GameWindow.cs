@@ -11,9 +11,6 @@ public sealed class GameWindow : Form {
     public GameWindow() {
         Text = "Game";
 
-        DoubleBuffered = true;
-        SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
-       
         ShowIcon = false;
         //ShowInTaskbar = false;
 
@@ -42,7 +39,7 @@ public sealed class GameWindow : Form {
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation);
         e.Cancel = (res == DialogResult.No);
-        if (e.Cancel) {
+        if (!e.Cancel) {
             p_Closed = true;
         }
     }

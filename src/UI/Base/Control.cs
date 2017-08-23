@@ -8,6 +8,7 @@ public abstract class UIControl : IUI {
     private bool p_Focus;
     private int p_X, p_Y;
     private int p_W, p_H;
+
     private Game p_Game;
 
     private UIControl p_Parent;
@@ -15,10 +16,15 @@ public abstract class UIControl : IUI {
 
     public UIControl(Game game) {
         p_Game = game;
+        p_Enabled = true;
+
+        //default visibility to true
+        Visible = true;
     }
 
     public void Enable() { p_Enabled = true; }
     public void Disable() { p_Enabled = false; }
+    public bool Visible { get; set; }
     public bool Enabled { get { return p_Enabled; } }
     public Game Game { get { return p_Game; } }
 
@@ -65,6 +71,7 @@ public abstract class UIControl : IUI {
         get { return p_H; }
         set { p_H = value; }
     }
+
     public bool Focused { get { return p_Focus; } }
 
     public void Focus() { 
@@ -201,6 +208,8 @@ public abstract class UIControl : IUI {
     }
     
     private void sendMessage(Game g, msgType type, object args) {
+        if (!p_Enabled) { return; }
+
         //no event?
         if (type == msgType.NONE) { return; }
 
@@ -313,7 +322,6 @@ public abstract class UIControl : IUI {
 
 
     }
-
 
     public event OnMouseEventHandler MouseMove;
     public event OnMouseEventHandler MouseUp;

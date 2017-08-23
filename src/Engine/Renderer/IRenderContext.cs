@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Drawing;
 
-public interface IRenderContext : IDisposable {
+public interface IRenderContext : IDeviceContext, IDisposable {
     int Width { get; }
     int Height { get; }
 

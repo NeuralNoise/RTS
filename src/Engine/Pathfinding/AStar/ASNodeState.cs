@@ -1,5 +1,5 @@
 ﻿public static partial class Pathfinder {
-    private enum PathfinderASNodeState : byte {
+    private enum ASNodeState : byte {
 
         NONE = 0,
 

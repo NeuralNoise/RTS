@@ -38,4 +38,6 @@ public interface IRenderer {
     void DrawImageUnscaled(Bitmap btm, int x, int y);
 
     IRenderContext Context { get; }
+
+    void SetContext(IRenderContext ctx);
 }

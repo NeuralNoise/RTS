@@ -19,5 +19,6 @@ public interface IUI {
     void Enable();
     void Disable();
 
+    bool Visible { get; set; }
     bool Enabled { get; }
 }

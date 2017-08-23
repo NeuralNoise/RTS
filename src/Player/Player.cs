@@ -16,7 +16,6 @@ public class Player {
         p_Fog = new Fog(game.Map);
     }
 
-
     public int Index { get { return p_Index; } }
     public Color Color { get { return p_Color; } }
     public Fog Fog { get { return p_Fog; } }
