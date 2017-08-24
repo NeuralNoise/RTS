@@ -1,4 +1,21 @@
-﻿using System;
+/* 
+ * This file is part of the RTS distribution (https://github.com/tomwilsoncoder/RTS)
+ * 
+ * This program is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU General Public License as published by  
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -7,6 +24,9 @@ public sealed class GameWindow : Form {
     private IRenderer p_Renderer;
     private bool p_Focused;
     private bool p_Closed;
+
+    private int p_MouseOffsetX;
+    private int p_MouseOffsetY;
 
     public GameWindow() {
         Text = "Game";
@@ -52,6 +72,13 @@ public sealed class GameWindow : Form {
     private void handleFocusChanged(object sender, EventArgs e) {
         p_Focused = base.Focused;    
     }
+    private void handleMove(object sender, EventArgs e) {
+
+        //get the screen position of the top left corner of the window
+        Point location = PointToScreen(Point.Empty);
+        p_MouseOffsetX = location.X;
+        p_MouseOffsetY = location.Y;
+    }
 
     public override bool Focused {
         get { return p_Focused; }
@@ -69,12 +96,18 @@ public sealed class GameWindow : Form {
         KeyDown -= handleKeyDown;
         GotFocus -= handleFocusChanged;
         LostFocus -= handleFocusChanged;
+        Move -= handleMove;
+        Shown -= handleMove;
     }
     public void HookCoreEvents() {
         KeyDown += handleKeyDown;
         FormClosing += handleClosing;
         GotFocus += handleFocusChanged;
         LostFocus += handleFocusChanged;
+
+
+        Move += handleMove;
+        Shown += handleMove;
     }
 
     public bool Closed { get { return p_Closed; } }
@@ -90,6 +123,16 @@ public sealed class GameWindow : Form {
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
             TopMost = true;
+        }
+    }
+
+    public int MouseOffsetX { get { return p_MouseOffsetX; } }
+    public int MouseOffsetY { get { return p_MouseOffsetY; } }
+    public Point MouseOffset {
+        get {
+            return new Point(
+                p_MouseOffsetX,
+                p_MouseOffsetY);
         }
     }
 

@@ -59,12 +59,12 @@
   -->
   <ItemGroup>
     <Compile Include="Engine\Keyboard\ArrowKey.cs" />
-    <Compile Include="Engine\Map\Fog\Fog.cs" />
-    <Compile Include="Engine\Map\Fog\LineOfSight.cs" />
-    <Compile Include="Engine\Map\States\ResourceState.cs" />
-    <Compile Include="Engine\Map\Block.cs" />
-    <Compile Include="Engine\Map\Map.cs" />
-    <Compile Include="Engine\Map\BlockStates.cs" />
+    <Compile Include="Map\Fog\Fog.cs" />
+    <Compile Include="Map\Fog\LineOfSight.cs" />
+    <Compile Include="Map\States\ResourceState.cs" />
+    <Compile Include="Map\Block.cs" />
+    <Compile Include="Map\Map.cs" />
+    <Compile Include="Map\BlockStates.cs" />
     <Compile Include="Engine\Camera.cs" />
     <Compile Include="Engine\Pathfinding\AStar\ASNode.cs" />
     <Compile Include="Engine\Pathfinding\AStar\ASNodeState.cs" />
@@ -87,6 +87,7 @@
     <Compile Include="UI\Container.cs" />
     <Compile Include="UI\Base\Control.cs" />
     <Compile Include="UI\Base\IUI.cs" />
+    <Compile Include="UI\Cursor.cs" />
     <Compile Include="UI\Enums\TextAlign.cs" />
     <Compile Include="UI\HUD\HUDMenu.cs" />
     <Compile Include="UI\Label.cs" />

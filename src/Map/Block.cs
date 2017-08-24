@@ -17,24 +17,26 @@
 
 using System;
 
-public static partial class Pathfinder {
-    private unsafe struct ASNode {
-        public ASNode* Parent;
-        public ASNodeState State;
+using System.Runtime.InteropServices;
 
-        public int X;
-        public int Y;
+[StructLayout(LayoutKind.Explicit)]
+public struct Block {
+    [FieldOffset(0)]
+    public int SpriteID;
 
-        public bool Initialized;
+    [FieldOffset(4)]
+    public int StateID;
 
-        /// <summary>
-        /// Node distance from start
-        /// </summary>
-        public float G;
+    [FieldOffset(8)]
+    public bool Selected;
+}
 
-        /// <summary>
-        /// Node distance to end
-        /// </summary>
-        public float H;
-    }
+public unsafe struct VisibleBlock {
+    public int BlockX;
+    public int BlockY;
+    
+    public int RenderX;
+    public int RenderY;
+
+    public Block* Block;
 }

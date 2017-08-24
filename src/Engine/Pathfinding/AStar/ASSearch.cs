@@ -1,10 +1,26 @@
-﻿using System;
+/* 
+ * This file is part of the RTS distribution (https://github.com/tomwilsoncoder/RTS)
+ * 
+ * This program is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU General Public License as published by  
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+using System;
 using System.Drawing;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 public static unsafe partial class Pathfinder {
-
     public static List<Point> ASSearch(Point start, Point end, bool[][] concreteMatrix, int width, int height) {
         IntPtr matrix = IntPtr.Zero;
 
@@ -56,15 +72,30 @@ public static unsafe partial class Pathfinder {
         int startX = start.X, startY = start.Y;
         int endX = end.X, endY = end.Y;
 
-        //already there?
-        if (startX == endX && startY == endY) { 
-            return new List<Point>();
-        }
-
         //verify start/end is not collidable!
         bool startCollide = *(concreteMatrix + (startY * width) + startX);
         bool endCollide = *(concreteMatrix + (endY * width) + endX);
         if (startCollide || endCollide) {
+            bool resolved = false;
+
+            /*attempt to resolve the collision*/
+            if (startCollide) {
+                resolved = ResolveCollision(ref start, end, width, height, concreteMatrix);
+            }
+            if (endCollide) {
+                resolved = ResolveCollision(ref end, start, width, height, concreteMatrix);
+            }
+
+            //not resolved?
+            if (!resolved) {
+                return new List<Point>();
+            }
+            startX = start.X; startY = start.Y;
+            endX = end.X; endY = end.Y;
+        }
+
+        //already there?
+        if (startX == endX && startY == endY) { 
             return new List<Point>();
         }
 
@@ -112,7 +143,14 @@ public static unsafe partial class Pathfinder {
         Marshal.FreeHGlobal((IntPtr)adjacentLocations);
         return buffer;
     }
- 
+
+    public static IntPtr ASCreateMatrix(int width, int height) {
+        return (IntPtr)initNodeMatrix(width, height);
+    }
+    public static void ASDestroyMatrix(IntPtr matrix) {
+        Marshal.FreeHGlobal(matrix);
+    }
+
     private static ASNode* initNodeMatrix(int w, int h) {
         //allocate the matrix
         ASNode* matrix = (ASNode*)Marshal.AllocHGlobal(
@@ -158,9 +196,8 @@ public static unsafe partial class Pathfinder {
             (*current).State = ASNodeState.NONE;
         }
     }
-
     
-    /*encapsulate the search recursion to prevent stack overflow*/
+    /*encapsulate the search recursion to prevent stack overflow on large distance searches*/
     private class asContext {
         public int w;
         public int h;
@@ -213,6 +250,14 @@ public static unsafe partial class Pathfinder {
         private void getAdjacentLocations(int x, int y, int* output) {
             int* ptr = output;
 
+            /*
+                Note: We have to assign diagonals last so 
+                we can verify if NESW blocks are collidable
+                first. Also it is easy to deturmine if we 
+                are looking at a diagonal by just doing some
+                pointer arith.
+            */
+
             /*top*/
             *(ptr++) = x; *(ptr++) = y - 1; //x,y-1
 
@@ -224,6 +269,9 @@ public static unsafe partial class Pathfinder {
 
             /*right*/
             *(ptr++) = x + 1; *(ptr++) = y; //x+1,y
+
+
+
 
             /*diagonals*/
             *(ptr++) = x - 1; *(ptr++) = y - 1; //x-1,y-1
@@ -254,6 +302,8 @@ public static unsafe partial class Pathfinder {
             //iterate through each adjacent location
             int* adjacentLocationPtr = adjacentLocations;
             int* adjacentLocationEnd = adjacentLocations + 16;
+            int* adjacentLocationDiagonals = adjacentLocations + 8;
+            bool allowDiagonal = true;
             while (adjacentLocationPtr != adjacentLocationEnd) {
                 //read x,y
                 int x = *(adjacentLocationPtr++);
@@ -263,13 +313,23 @@ public static unsafe partial class Pathfinder {
                 if (x < 0 || y < 0 ||
                    x >= w || y >= h) { continue; }
 
+                //only allow diagonals when all adjacent NESW blocks 
+                //are not collidable.
+                bool isDiagonal = adjacentLocationPtr > adjacentLocationDiagonals;
+                if (isDiagonal && !allowDiagonal) {
+                    continue;
+                }
+
                 //get the node at this location
                 int offset = (y * w) + x;
                 bool isConcrete = *(concreteMatrix + offset);
                 ASNode* node = nodeMatrix + offset;
 
                 //solid?
-                if (isConcrete) { continue; }
+                if (isConcrete) {
+                    allowDiagonal = false;
+                    continue; 
+                }
 
                 //already closed?
                 if ((*node).State == ASNodeState.CLOSED) {

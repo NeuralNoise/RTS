@@ -1,4 +1,21 @@
-﻿using System;
+/* 
+ * This file is part of the RTS distribution (https://github.com/tomwilsoncoder/RTS)
+ * 
+ * This program is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU General Public License as published by  
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+using System;
 using System.IO;
 using System.Reflection;
 using System.Drawing;
@@ -11,7 +28,7 @@ public class Game {
     private GameWindow p_Window;
     private Camera p_Camera;
     private Map p_Map;
-
+    
     public Game(GameWindow wnd) {
         p_Window = wnd;
        
@@ -27,13 +44,14 @@ public class Game {
 
         /*initialize camera*/
         p_Camera = new Camera(this);
-        p_Camera.ZoomAbs(0, 0);
-        p_Camera.MoveCenter(500, 500);
+        p_Camera.ZoomAbs(32, 32);
+        p_Camera.MoveCenter(250, 250);
 
         /*initialize map*/
-        p_Map = new Map(this, 1000, 1000);
+        p_Map = new Map(this, 500, 500);
 
         /*init sub-systems*/
+        initMouse();
         initPlayers();
         initLogic();
         initUI();
@@ -41,7 +59,6 @@ public class Game {
         initDraw();
 
         /*hook events*/
-        wnd.MouseLeave += handleMouseLeave;
         wnd.Click += handleMouseClick;
         wnd.MouseWheel += handleMouseScroll;
         wnd.MouseMove += handleMouseMove;
@@ -79,7 +96,7 @@ public class Game {
     private void testCode() {
         Fog f = CurrentPlayer.Fog;
 
-        sight = new LineOfSight(500, 500, 5);
+        sight = new LineOfSight(250, 250, 5);
         p_CurrentPlayer.Fog.AddLOS(sight);
         p_CurrentPlayer.Fog.UpdateLOS();
     }
@@ -111,6 +128,8 @@ public class Game {
         p_Map.Draw(context, renderer);
 
         drawUI(context, renderer);
+
+        p_Cursor.Draw(context, renderer);
 
         renderer.EndFrame();
     }
@@ -317,6 +336,8 @@ public class Game {
     }
         
     private void updateCamera() {
+        if (p_ArrowKeyDown == ArrowKey.NONE) { return; }
+
         /*
          *  calculate camera steps based off the current frame rate.
             the faster the fps, the less of a step
@@ -327,6 +348,8 @@ public class Game {
         stepX = 25 - (int)(p_RenderHeartbeat.Rate / 60 * 10);
         stepY = stepX;
 
+        /*update cursor*/
+        p_Cursor.SetArrow(translateArrowDirection(p_ArrowKeyDown));
 
         /*based off the arrow key flags, adjust the camera
             accordingly.*/
@@ -382,58 +405,86 @@ public class Game {
 
     #region Mouse
     private UIClickDrag p_ClickDrag;
+    private UICursor p_Cursor;
+
     private bool p_MouseDown = false;
-    private Point p_MousePosition;
 
+    private void initMouse() {
+        p_Cursor = new UICursor(this);
+        p_Cursor.Enable();
+    }
     private void updateMouse() {
-        //control hijacked?
-        if (p_EventHijacker != null) { return; }
+        if (
+            //control hijacked?
+            p_EventHijacker != null ||
 
-        //logic disabled?
-        if (p_LogicDisabled) { return; }
+            //logic disabled?
+            p_LogicDisabled ||
 
-        //game has focus?
-        if (!p_Window.Focused) { return; }
+            //game has focus?
+            !p_Window.Focused ||
 
-        //clickdrag active?
-        if (p_ClickDrag.Enabled) { return; }
+            //arrow key?
+            p_ArrowKeyDown != ArrowKey.NONE ||
+
+            //clickdrag active?
+            p_ClickDrag.Enabled) {
+                p_Cursor.SetArrow(UICursor.ArrowDirection.NONE);
+                return;
+        }
 
         //get the cursor position relative to the window content
-        Point mousePosition = p_MousePosition;
+        Point mousePosition = PointToClient(Cursor.Position);
 
         //is the mouse at the side of the screen so we move the camera?
         int width = p_Window.Context.Width;
         int height = p_Window.Context.Height;
-        int margin = 40;
+        int margin = 30;
         int x = mousePosition.X;
         int y = mousePosition.Y;
         int step = 10;
+        int dX = 0, dY = 0;
 
         //if the cursor exceeds the bounds of the window at all, we ignore
         //the processing of moving the camera.
-        if (x < 0 || y < 0 ||
-           x > width || y > height) { return; }
+        if (x < 0 || y < 0 || x > width || y > height) { return; }
 
+        if (x < margin) { dX = -step; }
+        if (y < margin) { dY = -step; }
 
-        if (x < margin) { p_Camera.Move(-step, 0); }
-        if (y < margin) { p_Camera.Move(0, -step); }
+        if (x > width - margin) { dX = step; }
+        if (y > height - margin) { dY = step; }
 
-        if (x > width - margin) {
-            p_Camera.Move(step, 0);
+        if (dX == 0 && dY == 0) {
+            p_Cursor.SetArrow(UICursor.ArrowDirection.NONE);
+            return;
         }
-        if (y > height - margin) {
-            p_Camera.Move(0, step);
-        }
+
+        //adjust cursor arrow direction according to change in camera
+        UICursor.ArrowDirection direction = UICursor.ArrowDirection.NONE;
+        if (dX < 0) { direction |= UICursor.ArrowDirection.WEST; }
+        if (dX > 0) { direction |= UICursor.ArrowDirection.EAST; }
+
+        if (dY < 0) { direction |= UICursor.ArrowDirection.NORTH; }
+        if (dY > 0) { direction |= UICursor.ArrowDirection.SOUTH; }
+        p_Cursor.SetArrow(direction);
+
+
+        //move camera
+        p_Camera.Move(dX, dY);
+    }
+    private void disableArrow() { 
+        
     }
     private void handleMouseMove(object sender, MouseEventArgs e) {
         if (p_LogicDisabled) { return; }
 
         //resolve mouse position relative to the window position
         //(we get a 0,0 for mouse in top, left corner of window
-        p_MousePosition = p_Window.PointToClient(Cursor.Position);
+        Point mousePosition = PointToClient(Cursor.Position);
 
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseMove(this, p_MousePosition, e);
+            p_EventHijacker.OnMouseMove(this, mousePosition, e);
         }
 
         /*handle mouse down IF the mouse is clicked, so whenever the 
@@ -447,15 +498,17 @@ public class Game {
         //fire mousemove for all ui elements
         int uiL = p_UIElements.Length;
         for (int c = 0; c < uiL; c++) {
-            p_UIElements[c].OnMouseMove(this, p_MousePosition, e);
+            p_UIElements[c].OnMouseMove(this, mousePosition, e);
         }
     }
     private void handleMouseDown(object sender, MouseEventArgs e) {
         if (p_LogicDisabled) { return; }
         p_MouseDown = true;
 
+        Point mousePosition = PointToClient(Cursor.Position);
+
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseDown(this, p_MousePosition, e);
+            p_EventHijacker.OnMouseDown(this, mousePosition, e);
         }
 
         /*fire for all ui elements BUT the click drag and test if
@@ -464,7 +517,7 @@ public class Game {
         bool callClickDrag = true;
         for (int c = 0; c < uiL; c++) {
             IUI ui = p_UIElements[c];
-            ui.OnMouseDown(this, p_MousePosition, e);
+            ui.OnMouseDown(this, mousePosition, e);
         }
 
     }
@@ -472,28 +525,32 @@ public class Game {
         if (p_LogicDisabled) { return; }
         p_MouseDown = false;
 
+        Point mousePosition = PointToClient(Cursor.Position);
+
         //resolve mouse position relative to the window position
         //(we get a 0,0 for mouse in top, left corner of window
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseUp(this, p_MousePosition, e);
+            p_EventHijacker.OnMouseUp(this, mousePosition, e);
         }
 
         /*fire for all ui elements mouse up*/
         int uiL = p_UIElements.Length;
         for (int c = 0; c < uiL; c++) {
-            p_UIElements[c].OnMouseUp(this, p_MousePosition, e);
+            p_UIElements[c].OnMouseUp(this, mousePosition, e);
         }
     }
     private void handleMouseScroll(object sender, MouseEventArgs e) {
         if (p_LogicDisabled) { return; }
 
+        Point mousePosition = PointToClient(Cursor.Position);
+
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseScroll(this, p_MousePosition, e);
+            p_EventHijacker.OnMouseScroll(this, mousePosition, e);
         }
 
         //get the block where the mouse is currently at
         bool hasBlock;
-        VisibleBlock block = p_Map.TryGetBlockAtPoint(p_Window.Context, p_MousePosition, out hasBlock);
+        VisibleBlock block = p_Map.TryGetBlockAtPoint(p_Window.Context, mousePosition, out hasBlock);
        
         //adjust zoom
         int v = (e.Delta < 0 ? -1 : 1);
@@ -508,24 +565,21 @@ public class Game {
     private void handleMouseClick(object sender, EventArgs e) {
         if (p_MouseDown || p_LogicDisabled) { return; }
 
-
-        pathTest(p_MousePosition);
+        Point mousePosition = PointToClient(Cursor.Position);
+        pathTest(mousePosition);
 
         //clear selected
         uiBlocksSelected(null);
        
         MouseEventArgs args = e as MouseEventArgs;
         if (p_EventHijacker != null) {
-            p_EventHijacker.OnMouseClick(this, p_MousePosition, args);
+            p_EventHijacker.OnMouseClick(this, mousePosition, args);
         }
 
         int l = p_UIElements.Length;
         for (int c = 0; c < l; c++) {
-            p_UIElements[c].OnMouseClick(this, p_MousePosition, args);
+            p_UIElements[c].OnMouseClick(this, mousePosition, args);
         }
-    }
-    private void handleMouseLeave(object sender, EventArgs e) {
-        p_MousePosition = p_Window.PointToClient(Cursor.Position);
     }
 
     int pathState = 0;
@@ -556,8 +610,7 @@ public class Game {
             vBlock.BlockY);
         Block* block = vBlock.Block;
         if (block == (Block*)0) { return; }
-        if ((*block).StateID != -1) { return; }
-
+        
         Console.WriteLine(pathState);
 
         switch (pathState) { 
@@ -706,6 +759,25 @@ public class Game {
         }
     }
 
+    private UICursor.ArrowDirection translateArrowDirection(ArrowKey key) {
+        UICursor.ArrowDirection buffer = UICursor.ArrowDirection.NONE;
+
+        if ((key & ArrowKey.LEFT) == ArrowKey.LEFT) {
+            buffer |= UICursor.ArrowDirection.WEST;
+        }
+        if ((key & ArrowKey.RIGHT) == ArrowKey.RIGHT) {
+            buffer |= UICursor.ArrowDirection.EAST;
+        }
+        if ((key & ArrowKey.UP) == ArrowKey.UP) {
+            buffer |= UICursor.ArrowDirection.NORTH;
+        }
+        if ((key & ArrowKey.DOWN) == ArrowKey.DOWN) {
+            buffer |= UICursor.ArrowDirection.SOUTH;
+        }
+        return buffer;
+
+    }
+
     LineOfSight sight;
     private void fogFuck(Keys key) {
         
@@ -779,7 +851,6 @@ public class Game {
         }
     }
 
-
     private IUI addUI(IUI ui) {
         Array.Resize(ref p_UIElements, p_UIElements.Length + 1);
         p_UIElements[p_UIElements.Length - 1] = ui;
@@ -817,6 +888,8 @@ public class Game {
     }
        
     private unsafe void uiBlocksSelected(LinkedList<VisibleBlock> blocks) {
+        return;
+
         if (p_SelectedBlocks != null) {
             foreach (VisibleBlock b in p_SelectedBlocks) {
                 (*(b.Block)).Selected = false;
@@ -839,6 +912,13 @@ public class Game {
         }
         p_SelectedBlocks = blocks;
     
+    }
+
+
+    public Point PointToClient(Point p) {
+        return new Point(
+            p.X - p_Window.MouseOffsetX,
+            p.Y - p_Window.MouseOffsetY);
     }
     #endregion
 
