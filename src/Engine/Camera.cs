@@ -14,7 +14,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 using System;
 using System.Drawing;
 
@@ -27,17 +26,40 @@ public sealed class Camera {
     private int p_BlockSizeW = BLOCKSIZE_W_MAX, 
                 p_BlockSizeH = BLOCKSIZE_H_MAX;
     private int p_X, p_Y;
+
+    private bool p_AllowMargin;
+    private int p_MarginWidth, p_MarginHeight;
+
     private Game p_Game;
 
     public Camera(Game game) {
         p_Game = game;
-
-        
     }
 
     public void Move(int dX, int dY) {
         p_X += dX;
         p_Y += dY;
+
+        //check margin
+        if (p_AllowMargin) {
+            Map map = p_Game.Map;
+
+            //translate margin to render x/y
+            int marginW = p_MarginWidth * p_BlockSizeW;
+            int marginH = p_MarginHeight * p_BlockSizeH;
+
+            //check mins
+            if (p_X < -marginW) { p_X = -marginW; }
+            if (p_Y < -marginH) { p_Y = -marginH; }
+
+            //check max
+            Size blocksPerFrame = BlocksInFrame;
+
+            int maxX = marginW + ((map.Width - blocksPerFrame.Width) * p_BlockSizeW);
+            int maxY = marginH + ((map.Height - blocksPerFrame.Height) * p_BlockSizeH);
+            if (p_X > maxX) { p_X = maxX; }
+            if (p_Y > maxY) { p_Y = maxY; }
+        }
 
         //fire changed
         if (CameraChanged != null) {
@@ -80,6 +102,13 @@ public sealed class Camera {
         if (CameraChanged != null) {
             CameraChanged(this);
         }
+    }
+
+    public void SetMargin(int width, int height) {
+        p_AllowMargin = true;
+        p_MarginWidth = width;
+        p_MarginHeight = height;
+        Move(0, 0);
     }
 
     public void MoveAbs(int x, int y) {
@@ -125,6 +154,11 @@ public sealed class Camera {
     public int Y { get { return p_Y; } }
     public int BlockWidth { get { return p_BlockSizeW; } }
     public int BlockHeight { get { return p_BlockSizeH; } }
+
+    public bool EnableMargin {
+        get { return p_AllowMargin; }
+        set { p_AllowMargin = value; }
+    }
 
     public Size BlocksInFrame {
         get {

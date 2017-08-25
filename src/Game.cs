@@ -48,7 +48,7 @@ public class Game {
         p_Camera.MoveCenter(250, 250);
 
         /*initialize map*/
-        p_Map = new Map(this, 500, 500);
+        p_Map = new Map(this, 1000, 1000);
 
         /*init sub-systems*/
         initMouse();
@@ -68,8 +68,26 @@ public class Game {
         wnd.Resize += handleResize;
         wnd.GotFocus += handleFocusChanged;
         wnd.LostFocus += handleFocusChanged;
-        
+
+        unsafe {
+            IPathfinderContext ctx = Pathfinder.ASCreateContext(p_Map.Width, p_Map.Height);
+            while (true) {
+                break;
+                int time = Environment.TickCount;
+                //break;
+                List<Point> lol = Pathfinder.ASSearch(
+                    ctx,
+                    Point.Empty,
+                    new Point(p_Map.Width - 1, p_Map.Height - 1),
+                    p_Map.GetConcreteMatrix());
+
+                Console.WriteLine((Environment.TickCount - time) + "ms for " + lol.Count + " items");
+            }
+        }
         wnd.HookCoreEvents();
+
+        p_Camera.EnableMargin = true;
+        p_Camera.SetMargin(10, 10);
 
         testCode();
     }
@@ -99,6 +117,9 @@ public class Game {
         sight = new LineOfSight(250, 250, 5);
         p_CurrentPlayer.Fog.AddLOS(sight);
         p_CurrentPlayer.Fog.UpdateLOS();
+
+        onDebugPrompt("toggle fog");
+        onDebugPrompt("warp 0 0");
     }
 
     #region Rendering
@@ -439,7 +460,7 @@ public class Game {
         //is the mouse at the side of the screen so we move the camera?
         int width = p_Window.Context.Width;
         int height = p_Window.Context.Height;
-        int margin = 30;
+        int margin = 40;
         int x = mousePosition.X;
         int y = mousePosition.Y;
         int step = 10;
@@ -566,10 +587,11 @@ public class Game {
         if (p_MouseDown || p_LogicDisabled) { return; }
 
         Point mousePosition = PointToClient(Cursor.Position);
-        pathTest(mousePosition);
 
         //clear selected
         uiBlocksSelected(null);
+
+        pathTest(mousePosition);
        
         MouseEventArgs args = e as MouseEventArgs;
         if (p_EventHijacker != null) {
@@ -585,7 +607,6 @@ public class Game {
     int pathState = 0;
     Point pathStart;
     Point pathEnd;
-
     private unsafe void pathTest(Point mousePosition) {
         Block* matrix = Map.GetBlockMatrix();
 

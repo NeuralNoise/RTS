@@ -15,23 +15,11 @@
 */
 
 using System;
-using System.IO;
 using System.Drawing;
-using System.Windows.Forms;
 
+public interface IPathfinderContext : IDisposable {
+    int Width { get; }
+    int Height { get; }
+    Size Size { get; }
 
-using System.Collections.Generic;
-
-static class Init {
-    [STAThread]
-    static void Main(string[] args) {
-        Application.EnableVisualStyles();
-
-        new System.Threading.Thread(new System.Threading.ThreadStart(delegate{
-            GameWindow wnd = new GameWindow();
-            Game game = new Game(wnd);
-            Application.Run(wnd);
-        }), 1024 * 1024 * 4).Start();
-
-    }
 }

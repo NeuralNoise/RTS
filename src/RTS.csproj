@@ -59,6 +59,9 @@
   -->
   <ItemGroup>
     <Compile Include="Engine\Keyboard\ArrowKey.cs" />
+    <Compile Include="Engine\Pathfinding\AStar\Context.cs" />
+    <Compile Include="Engine\Pathfinding\AStar\NodeQueue.cs" />
+    <Compile Include="Engine\Pathfinding\IPathfinderContext.cs" />
     <Compile Include="Map\Fog\Fog.cs" />
     <Compile Include="Map\Fog\LineOfSight.cs" />
     <Compile Include="Map\States\ResourceState.cs" />
@@ -66,9 +69,9 @@
     <Compile Include="Map\Map.cs" />
     <Compile Include="Map\BlockStates.cs" />
     <Compile Include="Engine\Camera.cs" />
-    <Compile Include="Engine\Pathfinding\AStar\ASNode.cs" />
-    <Compile Include="Engine\Pathfinding\AStar\ASNodeState.cs" />
-    <Compile Include="Engine\Pathfinding\AStar\ASSearch.cs" />
+    <Compile Include="Engine\Pathfinding\AStar\Node.cs" />
+    <Compile Include="Engine\Pathfinding\AStar\NodeState.cs" />
+    <Compile Include="Engine\Pathfinding\AStar\Pathfinder.cs" />
     <Compile Include="Engine\Pathfinding\Helpers.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="GameWindow.cs">

@@ -14,27 +14,26 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 using System;
+using System.Runtime.InteropServices;
 
 public static partial class Pathfinder {
+
+    [StructLayout(LayoutKind.Explicit, Pack=1)]
     private unsafe struct ASNode {
-        public ASNode* Parent;
+        [FieldOffset(0)]
         public ASNodeState State;
 
-        public int X;
-        public int Y;
+        [FieldOffset(1)]
+        public short ParentX;
 
-        public bool Initialized;
+        [FieldOffset(3)]
+        public short ParentY;
 
         /// <summary>
         /// Node distance from start
         /// </summary>
+        [FieldOffset(5)]
         public float G;
-
-        /// <summary>
-        /// Node distance to end
-        /// </summary>
-        public float H;
     }
 }

@@ -59,7 +59,6 @@ public sealed class UICursor {
         cursorTestBmp = clone;
     }
 
-
     public void Draw(IRenderContext context, IRenderer renderer) {
         if (!p_Enabled) { return; }
         

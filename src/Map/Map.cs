@@ -14,8 +14,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 using System;
+using System.IO;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
@@ -35,6 +35,61 @@ public unsafe class Map : IDisposable {
 
     private bool p_UpdateVisibleBlocks = true;
     private LinkedList<VisibleBlock> p_VisibleBlocks;
+
+    private bool[,] load(string filename, out Point start, out Point end) {
+        FileStream fs = new FileStream(filename, FileMode.Open);
+        byte[] buffer = new byte[fs.Length];
+
+
+        start = new Point(fs.ReadByte() << 8 | fs.ReadByte(), fs.ReadByte() << 8 | fs.ReadByte());
+        end = new Point(fs.ReadByte() << 8 | fs.ReadByte(), fs.ReadByte() << 8 | fs.ReadByte());
+        
+        fs.Read(buffer, 0, 21 - 8);
+
+        bool[,] matrix = new bool[1000, 1000];
+
+        for (int y = 0; y < 1000; y++) {
+            for (int x = 0; x < 1000; x++) {
+                matrix[x, y] = fs.ReadByte() == 0;
+            }
+        }
+
+        fs.Close();
+        return matrix;
+    }
+    private void test() {
+        Point st, en;
+        bool[,] m = load("paths/maze.astar", out st, out en);
+        for (int x = 0; x < 1000; x++) {
+            for (int y = 0; y < 1000; y++) {
+
+                Block* p = translateToPointer(x, y);
+                (*p).StateID = m[x, y] ? 1 : -1;
+            }
+        }
+        updateConcreteMatrix();
+        IPathfinderContext ctx = Pathfinder.ASCreateContext(p_Width, p_Height);
+        
+        while (true) {
+
+
+            int time = Environment.TickCount;
+            List<Point> path = Pathfinder.ASSearch(
+                ctx,
+                st,
+                en,
+                p_ConcreteMatrix);
+            Console.WriteLine((Environment.TickCount - time) + "ms ");
+            foreach (Point p in path)
+            {
+                (*translateToPointer(p.X, p.Y)).Selected = true;
+            }
+
+            break;
+            Console.ReadLine();
+        }
+
+    }
 
     public Map(Game game, int width, int height) {
         p_States = new BlockStates<ResourceState>();
@@ -59,7 +114,10 @@ public unsafe class Map : IDisposable {
         generateResource(1, 175); //food
         generateResource(2, 250); //gold
         generateResource(3, 200); //stone
-        updateConcreteMatrix();
+        
+        test();
+      
+        
 
         //hook change events to trigger a recalculation of
         //what blocks are visible on screen
@@ -488,6 +546,12 @@ public unsafe class Map : IDisposable {
     }
     public int Width { get { return p_Width; } }
     public int Height { get { return p_Height; } }
+
+    public Point End {
+        get {
+            return new Point(p_Width, p_Height);
+        }
+    }
 
     public Block this[int x, int y] {
         get {
