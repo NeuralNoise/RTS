@@ -45,6 +45,22 @@ public static partial class Pathfinder {
             return node;
         }
 
+        /*
+            We trust this call and don't check that the list is not
+            empty and does contain at least 2 entities (it's faster that way)
+        */
+        public void Swap() {
+            ASNode* first = *(p_CurrentStart - 1);
+            ASNode* current = *p_CurrentStart;
+
+            //swap over
+            *p_CurrentStart = first;
+            *(p_CurrentStart - 1) = current;
+        }
+        public ASNode* Peak() {
+            return *(p_CurrentStart);
+        }
+
         public void Clear() {
             p_CurrentStart = p_CurrentEnd = p_Base;
         }

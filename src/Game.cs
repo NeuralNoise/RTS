@@ -21,6 +21,7 @@ public class Game {
     private GameWindow p_Window;
     private Camera p_Camera;
     private Map p_Map;
+    private MapRenderer p_MapRenderer;
     
     public Game(GameWindow wnd) {
         p_Window = wnd;
@@ -33,6 +34,8 @@ public class Game {
             //p_Window.ToggleFullscreen();
             p_Window.Focus();
             p_Window.BringToFront();
+
+            testCode();
         };
 
         /*initialize camera*/
@@ -42,6 +45,7 @@ public class Game {
 
         /*initialize map*/
         p_Map = new Map(this, 1000, 1000);
+        p_MapRenderer = new MapRenderer(this, p_Map, p_Camera);
 
         /*init sub-systems*/
         initMouse();
@@ -72,7 +76,7 @@ public class Game {
                     ctx,
                     Point.Empty,
                     new Point(p_Map.Width - 1, p_Map.Height - 1),
-                    p_Map.GetConcreteMatrix());
+                    p_Map.GetConcreteMatrix(true));
 
                 Console.WriteLine((Environment.TickCount - time) + "ms for " + lol.Count + " items");
             }
@@ -81,12 +85,11 @@ public class Game {
 
         p_Camera.EnableMargin = true;
         p_Camera.SetMargin(10, 10);
-
-        testCode();
     }
 
     public Camera Camera { get { return p_Camera; } }
     public Map Map { get { return p_Map; } }
+    public MapRenderer MapRenderer { get { return p_MapRenderer; } }
     public GameWindow Window { get { return p_Window; } }
 
     private IUI p_EventHijacker;
@@ -113,6 +116,14 @@ public class Game {
 
         onDebugPrompt("toggle fog");
         onDebugPrompt("warp 0 0");
+        onDebugPrompt("toggle los");
+        onDebugPrompt("zoom 0 0");
+        
+
+        p_Window.MouseDown += delegate(object sender, MouseEventArgs e) {
+            Point mousePosition = PointToClient(Cursor.Position);
+            pathTest(mousePosition, e.Button);
+        };
     }
 
     #region Rendering
@@ -139,7 +150,7 @@ public class Game {
         renderer.SetColor(Color.Black);
         renderer.Clear();
 
-        p_Map.Draw(context, renderer);
+        p_MapRenderer.Draw(context, renderer);
 
         drawUI(context, renderer);
 
@@ -226,9 +237,12 @@ public class Game {
                     Convert.ToInt32(txt[1]),
                     Convert.ToInt32(txt[2]));
                 break;
-
+            case "zoom":
+                p_Camera.ZoomAbs(
+                    Convert.ToInt32(txt[1]),
+                    Convert.ToInt32(txt[2]));
+                break;
             case "toggle":
-
                 if (txt[1] == "debug") {
                     p_DebugLabel.Visible = !p_DebugLabel.Visible;
                     if (p_DebugLabel.Visible) {
@@ -281,11 +295,11 @@ public class Game {
             }
             catch { }
 
-            VisibleBlock blockAtCursor = p_Map.TryGetBlockAtPoint(p_Window.Context, mousePosition);
+            VisibleBlock blockAtCursor = p_MapRenderer.TryGetBlockAtPoint(p_Window.Context, mousePosition);
             dbgString =
                 "Keys: keys[" + p_CurrentKeys + "] arw[" + p_ArrowKeyDown + "]\n" +
                 "Camera position: " + p_Camera.X + "x" + p_Camera.Y + "\n" +
-                "Blocks rendered: " + p_Map.VisibleBlocks.Count + "\n" +
+                "Blocks rendered: " + p_MapRenderer.VisibleBlocks.Count + "\n" +
                 "Blocks revealed: " + fog.BlocksRevealed + "/" + (p_Map.Width * p_Map.Height) +
                     " [" + (fog.BlocksRevealed * 1.0f / (p_Map.Width * p_Map.Height) * 100).ToString("0.00") + "%]\n" +
                 "Block size: " + p_Camera.BlockWidth + "x" + p_Camera.BlockHeight + "\n" +
@@ -301,7 +315,7 @@ public class Game {
 
         p_DebugLabel.Text = dbgString;
         p_DebugLabel.Location = new Point(
-            p_Window.Context.Width - p_DebugLabel.Width - 10,
+            p_Window.Context.Width - p_DebugLabel.Width,
             p_Window.Context.Height - p_DebugLabel.Height);
     }
     #endregion
@@ -388,7 +402,7 @@ public class Game {
         set {
             if (value == p_EnableFog) { return; }
             p_EnableFog = value;
-            p_Map.Invalidate();
+            p_MapRenderer.Invalidate();
             
         }
     }
@@ -443,7 +457,7 @@ public class Game {
 
             //clickdrag active?
             p_ClickDrag.Enabled) {
-                p_Cursor.SetArrow(UICursor.ArrowDirection.NONE);
+                p_Cursor.SetArrow(Direction.NONE);
                 return;
         }
 
@@ -470,17 +484,17 @@ public class Game {
         if (y > height - margin) { dY = step; }
 
         if (dX == 0 && dY == 0) {
-            p_Cursor.SetArrow(UICursor.ArrowDirection.NONE);
+            p_Cursor.SetArrow(Direction.NONE);
             return;
         }
 
         //adjust cursor arrow direction according to change in camera
-        UICursor.ArrowDirection direction = UICursor.ArrowDirection.NONE;
-        if (dX < 0) { direction |= UICursor.ArrowDirection.WEST; }
-        if (dX > 0) { direction |= UICursor.ArrowDirection.EAST; }
+        Direction direction = Direction.NONE;
+        if (dX < 0) { direction |= Direction.WEST; }
+        if (dX > 0) { direction |= Direction.EAST; }
 
-        if (dY < 0) { direction |= UICursor.ArrowDirection.NORTH; }
-        if (dY > 0) { direction |= UICursor.ArrowDirection.SOUTH; }
+        if (dY < 0) { direction |= Direction.NORTH; }
+        if (dY > 0) { direction |= Direction.SOUTH; }
         p_Cursor.SetArrow(direction);
 
 
@@ -564,11 +578,11 @@ public class Game {
 
         //get the block where the mouse is currently at
         bool hasBlock;
-        VisibleBlock block = p_Map.TryGetBlockAtPoint(p_Window.Context, mousePosition, out hasBlock);
+        VisibleBlock block = p_MapRenderer.TryGetBlockAtPoint(p_Window.Context, mousePosition, out hasBlock);
        
         //adjust zoom
         int v = (e.Delta < 0 ? -1 : 1);
-        p_Camera.Zoom(v * 10, v * 10);
+        p_Camera.Scale(v * 10, v * 10);
 
         //move camera to the block where the mouse is.
         if (hasBlock) {
@@ -583,8 +597,6 @@ public class Game {
 
         //clear selected
         uiBlocksSelected(null);
-
-        pathTest(mousePosition);
        
         MouseEventArgs args = e as MouseEventArgs;
         if (p_EventHijacker != null) {
@@ -597,66 +609,55 @@ public class Game {
         }
     }
 
-    int pathState = 0;
     Point pathStart;
-    Point pathEnd;
-    private unsafe void pathTest(Point mousePosition) {
+    private unsafe void pathTest(Point mousePosition, MouseButtons button) {
+       
         Block* matrix = Map.GetBlockMatrix();
-
-        if (pathState == 2) {
-            pathState = 0;
-
-            Block* ptr = matrix;
-            Block* ptrEnd = ptr + (Map.Width * Map.Height);
-            while (ptr != ptrEnd) {
-                (*(ptr++)).Selected = false;
-            }
-            
-        }
-
         VisibleBlock vBlock = default(VisibleBlock);
         try {
-            vBlock = Map.GetBlockAtPoint(p_Window.Context, mousePosition);
+            vBlock = p_MapRenderer.GetBlockAtPoint(p_Window.Context, mousePosition);
         }
         catch { return; }
         Point blockLocation = new Point(
-            vBlock.BlockX,
-            vBlock.BlockY);
+           vBlock.BlockX,
+           vBlock.BlockY);
         Block* block = vBlock.Block;
         if (block == (Block*)0) { return; }
-        
-        Console.WriteLine(pathState);
 
-        switch (pathState) { 
-            case 0:
-                pathStart = blockLocation;
-                break;
-            case 1:
-                pathEnd = blockLocation;
-                List<Point> path = Pathfinder.ASSearch(
-                    pathStart,
-                    pathEnd,
-                    Map.GetConcreteMatrix(),
-                    Map.Width,
-                    Map.Height);
+        //
+        if (button == MouseButtons.None) { return; }
 
-                if (path.Count == 0) {
-                    MessageBox.Show("Path not found!");
-                }
-
-                foreach (Point p in path) {
-
-                    Block* b = matrix + (p.Y * Map.Width) + p.X;
-
-                    (*b).Selected = true;
-
-                }
-
-                break;
+        Block* ptr = matrix;
+        Block* ptrEnd = ptr + (Map.Width * Map.Height);
+        while (ptr != ptrEnd) {
+            (*(ptr++)).Selected = false;
         }
 
+        if (button == MouseButtons.Left) {
+            pathStart = blockLocation;
+            return;
+        }
+        if (button == MouseButtons.Right) {
+            List<Point> path = Pathfinder.ASSearch(
+                pathStart,
+                blockLocation,
+                Map.GetConcreteMatrix(true),
+                Map.Width,
+                Map.Height);
 
-        pathState++;
+            if (path.Count == 0) {
+                MessageBox.Show("Path not found!");
+            }
+
+            foreach (Point p in path) {
+                Block* b = matrix + (p.Y * Map.Width) + p.X;
+
+                if ((*b).TypeID == BlockType.TERRAIN_WATER) { break; }
+
+                (*b).Selected = true;
+
+            }
+        }
     }
     #endregion
 
@@ -773,20 +774,20 @@ public class Game {
         }
     }
 
-    private UICursor.ArrowDirection translateArrowDirection(ArrowKey key) {
-        UICursor.ArrowDirection buffer = UICursor.ArrowDirection.NONE;
+    private Direction translateArrowDirection(ArrowKey key) {
+        Direction buffer = Direction.NONE;
 
         if ((key & ArrowKey.LEFT) == ArrowKey.LEFT) {
-            buffer |= UICursor.ArrowDirection.WEST;
+            buffer |= Direction.WEST;
         }
         if ((key & ArrowKey.RIGHT) == ArrowKey.RIGHT) {
-            buffer |= UICursor.ArrowDirection.EAST;
+            buffer |= Direction.EAST;
         }
         if ((key & ArrowKey.UP) == ArrowKey.UP) {
-            buffer |= UICursor.ArrowDirection.NORTH;
+            buffer |= Direction.NORTH;
         }
         if ((key & ArrowKey.DOWN) == ArrowKey.DOWN) {
-            buffer |= UICursor.ArrowDirection.SOUTH;
+            buffer |= Direction.SOUTH;
         }
         return buffer;
 
@@ -830,13 +831,13 @@ public class Game {
         sight.CenterY += yv;
         sight.Radius = r;
         p_CurrentPlayer.Fog.UpdateLOS();
-        p_Map.Invalidate();
+        p_MapRenderer.Invalidate();
     }
     #endregion
 
     #region UI
     private IUI[] p_UIElements;
-    private LinkedList<VisibleBlock> p_SelectedBlocks;
+    private List<VisibleBlock> p_SelectedBlocks;
 
     private void initUI() {
         p_UIElements = new IUI[0];
@@ -901,9 +902,7 @@ public class Game {
             blockY);
     }
        
-    private unsafe void uiBlocksSelected(LinkedList<VisibleBlock> blocks) {
-        return;
-
+    private unsafe void uiBlocksSelected(List<VisibleBlock> blocks) {
         if (p_SelectedBlocks != null) {
             foreach (VisibleBlock b in p_SelectedBlocks) {
                 (*(b.Block)).Selected = false;
@@ -914,20 +913,13 @@ public class Game {
 
         if (blocks == null) { return; }
         foreach (VisibleBlock b in blocks) {
-            if ((*b.Block).StateID == -1) { continue; }
-
-            ResourceState r = Map.Resources.Resolve((*b.Block).StateID);
-            ResourceStockPile.CollectFromBlock(
-                p_Map,
-                *b.Block,
-                r.Amount);
-
-            (*b.Block).StateID = -1;
+            if ((*b.Block).TypeID > 1) {
+                (*b.Block).TypeID = 0;
+            }
         }
         p_SelectedBlocks = blocks;
     
     }
-
 
     public Point PointToClient(Point p) {
         return new Point(

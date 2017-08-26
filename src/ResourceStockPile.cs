@@ -26,19 +26,7 @@ public static class ResourceStockPile {
     }
 
     public static bool CollectFromBlock(Map map, Block block, double amount) {
-        if (block.StateID == -1) { return false; }
-
-        //get the block state
-        ResourceState state = map.Resources.Resolve(block.StateID);
-        
-        //can we take this away?
-        if (amount > state.Amount) { return false; }
-        
-        //collect
-        lock (p_Mutex) {
-            p_Resources[state.ResourceID].amount += state.Amount;
-        }
-        return true;
+        return false;
     }
 
     public static double GetAmount(int resourceID) {

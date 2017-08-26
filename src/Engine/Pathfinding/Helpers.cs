@@ -59,15 +59,19 @@ public unsafe partial class Pathfinder {
         int dX = endPoint.X - point.X;
         int dY = endPoint.Y - point.Y;
         if (dX < 0) { dX = -1; }
-        else { dX = 1; }
+        else if(dX != 0) { dX = 1; }
+
         if (dY < 0) { dY = -1; }
-        else { dY = 1; }
+        else if(dY != 0) { dY = 1; }
+
+        //is the start/end point the same location?
+        if (dX == 0 && dY == 0) { return false; }
 
         //keep decreasing location until we hit a non-concrete block
         int newX = point.X;
         int newY = point.Y;
-        while (newX != 0 && newY != 0 &&
-              newX < width && newY < height) {
+        while (newX >= 0 && newY >= 0 &&
+               newX < width && newY < height) {
 
             //none collide?
             if (!(*(concreteMatrix + (newY * width) + newX))) {

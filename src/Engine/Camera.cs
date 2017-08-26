@@ -10,7 +10,7 @@
 using System;
 using System.Drawing;
 
-public sealed class Camera {
+public sealed class Camera : IAnimatePosition, IAnimateScale {
     private const int BLOCKSIZE_W_MIN = 16;
     private const int BLOCKSIZE_H_MIN = 16;
     private const int BLOCKSIZE_W_MAX = 48;
@@ -59,7 +59,7 @@ public sealed class Camera {
             CameraChanged(this);
         }
     }
-    public void Zoom(int dX, int dY) {
+    public void Scale(int dX, int dY) {
         //deturmine the block the camera is currently at.
         //so we can later move the camera back to this position.
         //note: the position WILL change since the resize will
@@ -110,7 +110,7 @@ public sealed class Camera {
             -p_Y + y);
     }
     public void ZoomAbs(int x, int y) {
-        Zoom(
+        Scale(
             -p_BlockSizeW + x,
             -p_BlockSizeH + y);
     }
@@ -143,8 +143,32 @@ public sealed class Camera {
 
     }
 
-    public int X { get { return p_X; } }
-    public int Y { get { return p_Y; } }
+    public int X {
+        get { return p_X; }
+        set {
+            MoveAbs(value, p_Y);
+        }
+    }
+    public int Y {
+        get { return p_Y; }
+        set {
+            MoveAbs(p_X, value);
+        }
+    }
+
+    public int Width {
+        get { return p_BlockSizeW; }
+        set {
+            ZoomAbs(value, p_BlockSizeH);
+        }
+    }
+    public int Height {
+        get { return p_BlockSizeH; }
+        set {
+            ZoomAbs(p_BlockSizeW, value);
+        }
+    }
+
     public int BlockWidth { get { return p_BlockSizeW; } }
     public int BlockHeight { get { return p_BlockSizeH; } }
 

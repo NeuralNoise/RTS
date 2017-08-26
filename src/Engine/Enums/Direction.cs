@@ -8,10 +8,21 @@
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
 using System;
-using System.Drawing;
 
-public interface IPathfinderContext : IDisposable {
-    int Width { get; }
-    int Height { get; }
-    Size Size { get; }
+
+[Flags]
+public enum Direction : byte {
+    NONE = 0,
+
+    NORTH = 0x01,
+    SOUTH = 0x02,
+
+    WEST = 0x04,
+    EAST = 0X08,
+
+    NORTH_WEST = NORTH | WEST,
+    NORTH_EAST = NORTH | EAST,
+
+    SOUTH_WEST = SOUTH | WEST,
+    SOUTH_EAST = SOUTH | EAST
 }

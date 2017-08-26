@@ -18,18 +18,8 @@ public struct Block {
     public int SpriteID;
 
     [FieldOffset(4)]
-    public int StateID;
+    public short TypeID;
 
     [FieldOffset(8)]
     public bool Selected;
-}
-
-public unsafe struct VisibleBlock {
-    public int BlockX;
-    public int BlockY;
-    
-    public int RenderX;
-    public int RenderY;
-
-    public Block* Block;
 }

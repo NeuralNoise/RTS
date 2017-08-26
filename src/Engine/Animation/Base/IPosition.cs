@@ -7,11 +7,10 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-using System;
-using System.Drawing;
 
-public interface IPathfinderContext : IDisposable {
-    int Width { get; }
-    int Height { get; }
-    Size Size { get; }
+public interface IAnimatePosition {
+    int X { get; set; }
+    int Y { get; set; }
+
+    void Move(int dX, int dY);
 }

@@ -58,16 +58,17 @@
   </Target>
   -->
   <ItemGroup>
+    <Compile Include="Engine\Animation\Base\IPosition.cs" />
     <Compile Include="Engine\Keyboard\ArrowKey.cs" />
     <Compile Include="Engine\Pathfinding\AStar\Context.cs" />
     <Compile Include="Engine\Pathfinding\AStar\NodeQueue.cs" />
     <Compile Include="Engine\Pathfinding\IPathfinderContext.cs" />
     <Compile Include="Map\Fog\Fog.cs" />
     <Compile Include="Map\Fog\LineOfSight.cs" />
+    <Compile Include="Map\MapRenderer.cs" />
     <Compile Include="Map\States\ResourceState.cs" />
-    <Compile Include="Map\Block.cs" />
+    <Compile Include="Map\Block\Block.cs" />
     <Compile Include="Map\Map.cs" />
-    <Compile Include="Map\BlockStates.cs" />
     <Compile Include="Engine\Camera.cs" />
     <Compile Include="Engine\Pathfinding\AStar\Node.cs" />
     <Compile Include="Engine\Pathfinding\AStar\NodeState.cs" />
@@ -94,8 +95,6 @@
     <Compile Include="UI\Enums\TextAlign.cs" />
     <Compile Include="UI\HUD\HUDMenu.cs" />
     <Compile Include="UI\Label.cs" />
-    <Compile Include="Units\Unit.cs" />
-    <Compile Include="Units\UnitManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -118,5 +117,12 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Engine\Animation\Base\IScale.cs" />
+    <Compile Include="Engine\Enums\Direction.cs" />
+    <Compile Include="Map\Block\BlockType.cs" />
+    <Compile Include="Map\Block\VisibleBlock.cs" />
+    <Compile Include="Map\PerlinNoise.cs" />
   </ItemGroup>
 </Project>

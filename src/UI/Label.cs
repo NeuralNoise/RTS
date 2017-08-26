@@ -18,6 +18,7 @@ public class UILabel : UIControl {
     private IRenderer p_SizeRenderer;
     private Brush p_ForeBrush;
     private TextAlign p_Align;
+    private Brush p_ShadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black));
 
     private string[] p_Lines;
 
@@ -68,11 +69,14 @@ public class UILabel : UIControl {
         int rX = rLocation.X;
         int rY = rLocation.Y;
 
+        int shadowSize = 3;
+
         renderer.SetFont(p_Font);
         renderer.SetBrush(p_ForeBrush);
 
         /*left align is just render as normal*/
         if (p_Align == TextAlign.Left) {
+            drawShadow(renderer, p_Text, rX, rY, shadowSize);
             renderer.DrawString(
                 p_Text,
                 rX, rY);
@@ -98,8 +102,17 @@ public class UILabel : UIControl {
                     xOffset = Width - lineSize.Width;
                     break;
             }
+            
+            //draw shadow
+            drawShadow(
+                renderer,
+                line,
+                rX + xOffset,
+                rY,
+                shadowSize);
 
             //draw
+            renderer.SetBrush(p_ForeBrush);
             renderer.DrawString(
                 line,
                 rX + xOffset,
@@ -109,5 +122,17 @@ public class UILabel : UIControl {
         
 
 
+    }
+
+    private void drawShadow(IRenderer renderer, string text, int x, int y, int shadowSize) {
+        //draw shadow
+        int shadowWidth = 2;
+        renderer.SetBrush(p_ShadowBrush);
+        for (int c = shadowWidth; c != -1; c--) {
+            renderer.DrawString(
+                text,
+                x + c,
+                y + c);
+        }
     }
 }

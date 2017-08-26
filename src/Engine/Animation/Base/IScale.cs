@@ -7,11 +7,9 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-using System;
-using System.Drawing;
+public interface IAnimateScale {
+    int Width { get; set; }
+    int Height { get; set; }
 
-public interface IPathfinderContext : IDisposable {
-    int Width { get; }
-    int Height { get; }
-    Size Size { get; }
+    void Scale(int dX, int dY);
 }

@@ -7,12 +7,18 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
+using System.Collections.Generic;
 
-public class UnitManager { 
-    
+public unsafe struct VisibleBlock {
+    public Block* Block;
 
+    public int BlockX;
+    public int BlockY;
 
+    public int RenderX;
+    public int RenderY;
 
+    /*only for drawing water!*/
+    public List<Direction> ShadowDirection;
 }

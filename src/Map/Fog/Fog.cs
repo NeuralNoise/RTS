@@ -34,14 +34,14 @@ public unsafe class Fog {
         Clear();
     }
 
-    public LinkedList<VisibleBlock> Filter(LinkedList<VisibleBlock> blocks) {
+    public List<VisibleBlock> Filter(List<VisibleBlock> blocks) {
         Lock();
 
-        LinkedList<VisibleBlock> buffer = new LinkedList<VisibleBlock>();
+        List<VisibleBlock> buffer = new List<VisibleBlock>();
         foreach (VisibleBlock b in blocks) {
 
             if (*(p_FogMatrix + (b.BlockY * p_Width) + b.BlockX)) {
-                buffer.AddLast(b);
+                buffer.Add(b);
             }
 
         }

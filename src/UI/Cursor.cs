@@ -17,12 +17,17 @@ public sealed class UICursor {
     private Game p_Game;
     private PointF[] p_Polygon;
     private Size p_Size;
-    private ArrowDirection p_CurrentArrow;
+    private Direction p_CurrentArrow;
     private bool p_Enabled;
+    private MouseButtons p_CurrentButton;
 
     public UICursor(Game game) {
         p_Game = game;
         p_Size = new Size(20, 20);
+
+        /*hook into cursor down events so we know what button is being pressed*/
+        game.Window.MouseDown += handleMouseDown;
+        game.Window.MouseUp += handleMouseUp;
 
         cursorTest();
     }
@@ -59,7 +64,7 @@ public sealed class UICursor {
         Point mousePosition = p_Game.PointToClient(Cursor.Position);
 
         /*draw arrow?*/
-        if (p_CurrentArrow != ArrowDirection.NONE) {
+        if (p_CurrentArrow != Direction.NONE) {
             Matrix transform = new Matrix();
             transform.Translate(
                 (float)mousePosition.X,
@@ -89,7 +94,7 @@ public sealed class UICursor {
                 Cursor.Current.Size));
     }
 
-    public void SetArrow(ArrowDirection direction) {
+    public void SetArrow(Direction direction) {
         if (p_CurrentArrow == direction) { return; }
 
         p_CurrentArrow = direction;
@@ -98,50 +103,63 @@ public sealed class UICursor {
 
         switch (direction) {
             #region North
-            case ArrowDirection.NORTH:
+            case Direction.NORTH:
                 p_Polygon[1] = new PointF(-0.7f, 0.7f);
                 p_Polygon[2] = new PointF(0.7f, 0.7f);
                 break;
-            case ArrowDirection.NORTH_WEST:
+            case Direction.NORTH_WEST:
                 p_Polygon[1] = new PointF(1, 0);
                 p_Polygon[2] = new PointF(0, 1);
                 break;
-            case ArrowDirection.NORTH_EAST:
+            case Direction.NORTH_EAST:
                 p_Polygon[1] = new PointF(-1, 0);
                 p_Polygon[2] = new PointF(0, 1);
                 break;
             #endregion
 
             #region South
-            case ArrowDirection.SOUTH:
+            case Direction.SOUTH:
                 p_Polygon[1] = new PointF(-0.7f, -0.7f);
                 p_Polygon[2] = new PointF(0.7f, -0.7f);
                 break;
-            case ArrowDirection.SOUTH_WEST:
+            case Direction.SOUTH_WEST:
                 p_Polygon[1] = new PointF(0, -1);
                 p_Polygon[2] = new PointF(1, 0);
                 break;
-            case ArrowDirection.SOUTH_EAST:
+            case Direction.SOUTH_EAST:
                 p_Polygon[1] = new PointF(-1, 0);
                 p_Polygon[2] = new PointF(0, -1);
                 break;
             #endregion
 
-            case ArrowDirection.WEST:
+            case Direction.WEST:
                 p_Polygon[1] = new PointF(0.70f, -0.70f);
                 p_Polygon[2] = new PointF(0.70f, 0.70f);
                 break;
-            case ArrowDirection.EAST:
+            case Direction.EAST:
                 p_Polygon[1] = new PointF(-0.7f, -0.7f);
                 p_Polygon[2] = new PointF(-0.7f, 0.7f);
                 break;
         }
     }
 
+
+
+    private void handleMouseDown(object sender, MouseEventArgs e) {
+        p_CurrentButton |= e.Button;
+
+    }
+    private void handleMouseUp(object sender, MouseEventArgs e) {
+        p_CurrentButton = MouseButtons.None;
+    }
+
+
+
     public Size Size {
         get { return p_Size; }
         set { p_Size = value; }
     }
+    public MouseButtons MouseButton { get { return p_CurrentButton; } }
 
     public void Enable() {
         if (p_Enabled) { return; }
@@ -162,22 +180,5 @@ public sealed class UICursor {
         }));
 
         p_Enabled = false;
-    }
-
-    [Flags]
-    public enum ArrowDirection { 
-        NONE = 0,
-     
-        NORTH = 0x01,
-        SOUTH = 0x02,
-
-        WEST =  0x04,
-        EAST =  0X08,
-
-        NORTH_WEST = NORTH | WEST,
-        NORTH_EAST = NORTH | EAST,
-
-        SOUTH_WEST = SOUTH | WEST,
-        SOUTH_EAST = SOUTH | EAST
     }
 }

@@ -62,12 +62,14 @@ public static partial class Pathfinder {
                 });
                 */
 
+                //get the adjacent nodes
                 getAdjacent(current);
                 ASNode** adjacent = p_AdjacentNodes;
                 ASNode** adjacentEnd = adjacent + 8;
                 
                 while(adjacent != adjacentEnd) {
-                    if ((*adjacent) == (ASNode*)0) { break; }
+                    if ((*adjacent) == (ASNode*)0) {
+                        break; }
 
                     //we hit the end?
                     if (*adjacent == endNode) {
@@ -179,7 +181,7 @@ public static partial class Pathfinder {
                 //open?
                 if ((*node).State == ASNodeState.OPEN) {
                     //get the distance from current node to this node.
-                    float distance = calcDistance(x, y, currentX, currentY);
+                    float distance = calcH(x, y, currentX, currentY);
                     float gNew = currentG + distance;
                     if (gNew < (*node).G) {
                         (*node).ParentX = currentX;
@@ -194,7 +196,7 @@ public static partial class Pathfinder {
                 //not tested
                 (*node).ParentX = currentX;
                 (*node).ParentY = currentY;
-                (*node).G = currentG + calcDistance(
+                (*node).G = currentG + calcH(
                     x, y,
                     currentX, currentY);
                 (*node).State = ASNodeState.OPEN;
@@ -210,12 +212,12 @@ public static partial class Pathfinder {
             }
         }
 
-
-
-        private static float calcDistance(int x1, int y1, int x2, int y2) {
+        private static float calcH(int x1, int y1, int x2, int y2) {
             /*use pythagoras c^2=a^2+b^2 to get distance.*/
             int dX = x2 - x1;
             int dY = y2 - y1;
+
+            //return (dX * dX) + (dY * dY);
 
             return (float)Math.Sqrt(
                 (dX * dX) +

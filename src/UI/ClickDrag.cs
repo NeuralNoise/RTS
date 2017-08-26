@@ -76,7 +76,7 @@ public sealed class UIClickDrag : IUI {
             p_Width,
             p_Height);
 
-        LinkedList<VisibleBlock> blocks = game.Map.GetBlocksInRegion(
+        List<VisibleBlock> blocks = game.MapRenderer.GetBlocksInRegion(
             game.Window.Context,
             region);
         BlocksSelected(blocks);        
@@ -139,5 +139,5 @@ public sealed class UIClickDrag : IUI {
 
     public event OnBlocksSelectedEventHandler BlocksSelected;
     
-    public delegate void OnBlocksSelectedEventHandler(LinkedList<VisibleBlock> blocks);
+    public delegate void OnBlocksSelectedEventHandler(List<VisibleBlock> blocks);
 }

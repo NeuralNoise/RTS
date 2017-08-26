@@ -50,9 +50,9 @@ public class GDIPRenderer : IRenderer {
                p_Frame = new Bitmap(ctx.Width, ctx.Height, PixelFormat.Format32bppPArgb);
                p_FrameBuffer = Graphics.FromImage(p_Frame);
 
-               p_FrameBuffer.SmoothingMode = SmoothingMode.HighQuality;
-               p_FrameBuffer.InterpolationMode = InterpolationMode.HighQualityBilinear;
-               p_FrameBuffer.TextRenderingHint = TextRenderingHint.AntiAlias;
+               //p_FrameBuffer.SmoothingMode = SmoothingMode.HighQuality;
+               //p_FrameBuffer.InterpolationMode = InterpolationMode.HighQualityBilinear;
+               //p_FrameBuffer.TextRenderingHint = TextRenderingHint.AntiAlias;
         }
 
        
