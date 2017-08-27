@@ -22,4 +22,7 @@ public struct Block {
 
     [FieldOffset(8)]
     public bool Selected;
+
+    [FieldOffset(9)]
+    public byte Height;
 }

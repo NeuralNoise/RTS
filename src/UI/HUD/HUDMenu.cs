@@ -27,6 +27,8 @@ public class HUDMenu : UIContainer {
         BackBrush = Brushes.Gray;
     }
 
+
+
     public override void Update() {
         for (int c = 0; c < p_Resources.Length; c++) {
             p_Resources[c].Text = 

@@ -18,7 +18,4 @@ public unsafe struct VisibleBlock {
 
     public int RenderX;
     public int RenderY;
-
-    /*only for drawing water!*/
-    public List<Direction> ShadowDirection;
 }

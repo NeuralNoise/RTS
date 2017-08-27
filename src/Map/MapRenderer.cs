@@ -12,6 +12,8 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 public unsafe class MapRenderer {
     private Camera p_Camera;
@@ -66,11 +68,10 @@ public unsafe class MapRenderer {
                 renderer);
         }
 
-        //draw
         Camera camera = p_Game.Camera;
-        int blockWidth = camera.BlockWidth;
-        int blockHeight = camera.BlockHeight;
-        
+        int blockSize = camera.BlockSize;
+
+        #region initial render pass
         Point cursorPos = p_Game.PointToClient(Cursor.Position);
         foreach (VisibleBlock block in visible) {
             drawBlock(
@@ -78,8 +79,23 @@ public unsafe class MapRenderer {
                 renderer,
                 block,
                 los);
+        }
+        #endregion
 
-            //fire event to draw a block
+        #region secondary pass
+        /*
+            for anything that requires us to render over other blocks. 
+        */
+        foreach (VisibleBlock block in visible) {
+            /*draw coastline*/
+            if ((*block.Block).TypeID != BlockType.TERRAIN_WATER) {
+                drawCoastBlock(
+                    context,
+                    renderer,
+                    block);
+            }
+
+            /*fire block render*/
             if (BlockRender != null) {
                 BlockRender(
                     this,
@@ -88,6 +104,7 @@ public unsafe class MapRenderer {
                     block);
             }
         }
+        #endregion
 
         //fire event after frame finished
         if (EndRenderFrame != null) {
@@ -135,8 +152,7 @@ public unsafe class MapRenderer {
         int y = region.Y;
         int w = region.Width;
         int h = region.Height;
-        int blockW = cam.BlockWidth;
-        int blockH = cam.BlockHeight;
+        int blockSize = cam.BlockSize;
 
         //negative size of region? if so, adjust location of region accordingly.
         bool regionChange = false;
@@ -164,7 +180,7 @@ public unsafe class MapRenderer {
             if (block.Block == (Block*)0) { continue; }
             Rectangle rect = new Rectangle(
                 block.RenderX, block.RenderY,
-                blockW + 1, blockH + 1);
+                blockSize + 1, blockSize + 1);
 
             if (rect.IntersectsWith(region)) {
                 buffer.Add(block);
@@ -179,8 +195,7 @@ public unsafe class MapRenderer {
         Block block = *vBlock.Block;
         Color color = Color.Green;
         Camera camera = p_Camera;
-        int blockWidth = camera.Width;
-        int blockHeight=camera.Height;
+        int blockSize = camera.BlockSize;
 
         switch (block.TypeID) { 
             case BlockType.TERRAIN_WATER: color = Color.DodgerBlue;  break;
@@ -194,30 +209,21 @@ public unsafe class MapRenderer {
             color = Color.White;
         }
 
+        /*add depth*/
+        if (block.TypeID == BlockType.TERRAIN_GRASS) {
+            color = getColorAtPoint(
+                Color.Green, Color.Black,
+                (block.Height * 1.0f / 150));
+        }
+        if (block.TypeID == BlockType.TERRAIN_WATER) {
+            color = getColorAtPoint(
+                Color.DodgerBlue, Color.Black,
+                (block.Height * 1.0f / 100));
+        }
+
         //render the block
         renderer.SetBrush(new SolidBrush(color));
-        renderer.FillQuad(vBlock.RenderX, vBlock.RenderY, camera.BlockWidth, camera.BlockHeight);
-
-        if (block.TypeID == BlockType.TERRAIN_WATER &&
-            vBlock.ShadowDirection != null) {
-            List<Direction> directions = vBlock.ShadowDirection;
-
-
-            //grab block size
-            int bWidth = camera.BlockHeight;
-            int bHeight = camera.BlockWidth;
-
-            //
-            foreach (Direction d in directions) {
-                drawWaterShadow(
-                    renderer,
-                    d,
-                    vBlock,
-                    bWidth,
-                    bHeight);
-            }
-
-        }
+        renderer.FillQuad(vBlock.RenderX, vBlock.RenderY, camera.BlockSize, camera.BlockSize);
 
         /*draw LOS*/
         if (los != (bool*)0) {
@@ -228,10 +234,205 @@ public unsafe class MapRenderer {
             renderer.FillQuad(
                 vBlock.RenderX,
                 vBlock.RenderY,
-                blockWidth,
-                blockHeight);
+                blockSize,
+                blockSize);
         }
     }
+    private void drawCoastBlock(IRenderContext context, IRenderer renderer, VisibleBlock vBlock) {
+        //get info
+        Map map = p_Map;
+        Block* matrix = map.GetBlockMatrix();
+        Block* block = vBlock.Block;
+        int size = p_Camera.BlockSize;
+        int width = map.Width;
+        int height = map.Height;
+        int blockSize = p_Camera.BlockSize;
+        int shadowSize = 10;
+
+        //coastal?
+        Direction direction;
+        if(!isCoastline(block, matrix, out direction, vBlock.BlockX, vBlock.BlockY, width,height)){
+            return;
+        }
+
+
+        /*define gradient start/end x/y*/
+        int gradientStartX, gradientStartY,
+            gradientEndX, gradientEndY;
+        Color gColor1 = changeLight(Color.DodgerBlue, 0.4f);
+        Color gColor2 = Color.Transparent;
+
+        #region draw basic border
+        /*
+            reduce down the direction to get each individual direction
+            by using bitwise operators.
+        */
+        byte directionANDCurrent = (byte)0x08;
+        int dX = 0, dY = 0;
+        while (directionANDCurrent != 0) {
+            Direction current = (direction & (Direction)directionANDCurrent);
+            directionANDCurrent >>= 1;
+
+            if (current == Direction.NONE) { continue; }
+            
+            int x, y, w, h;
+            x = y = w = h = 0;
+
+            /**/
+            bool isNorth = current == Direction.NORTH;
+            bool isSouth = current == Direction.SOUTH;
+            bool isWest = current == Direction.WEST;
+            bool isEast = current == Direction.EAST;
+
+            //reset gradient position
+            gradientStartX = gradientStartY =
+            gradientEndX = gradientEndY = 0;
+
+            #region North/South
+            if (isNorth || isSouth) {
+                w = blockSize;
+                h = shadowSize;
+            }
+            if (isNorth) { 
+                y -= shadowSize; 
+                dY = -1;
+                gradientEndY = -shadowSize - 1;
+            }
+            if (isSouth) { 
+                y = blockSize; 
+                dY = 1;
+                gradientStartY = blockSize - 1;
+                gradientEndY = blockSize + shadowSize + 1;
+            }
+            #endregion
+
+            #region West/East
+            if (isWest || isEast) {
+                w = shadowSize;
+                h = blockSize;
+            }
+            if (isWest) { 
+                x = -shadowSize; 
+                dX = -1;
+                gradientEndX = -shadowSize - 1;
+            }
+            if (isEast) { 
+                x = blockSize; 
+                dX = 1;
+                gradientStartX = blockSize - 1;
+                gradientEndX = blockSize + shadowSize + 1;
+            }
+            #endregion 
+
+            gradientStartX += vBlock.RenderX;
+            gradientStartY += vBlock.RenderY;
+            gradientEndX += vBlock.RenderX;
+            gradientEndY += vBlock.RenderY;
+
+            x += vBlock.RenderX;
+            y += vBlock.RenderY;
+            renderer.SetBrush(new LinearGradientBrush(
+                new Point(gradientStartX, gradientStartY),
+                new Point(gradientEndX, gradientEndY),
+                gColor1, gColor2));
+            renderer.FillQuad(x, y, w, h);
+        }
+        #endregion
+
+
+        gradientStartX = gradientStartY =
+        gradientEndX = gradientEndY = 0;
+
+        #region draw diagonal
+        //can be diagonal?
+        if (dX == 0 || dY == 0) {
+            return;
+        }
+
+
+
+        /*get render location of the square*/
+        int rX = vBlock.RenderX;
+        int rY = vBlock.RenderY;
+        if (dX < 0) { rX -= shadowSize; }
+        else { rX += blockSize; }
+        if (dY < 0) { rY -= shadowSize; }
+        else { rY += blockSize; }
+
+
+        /*define gradient information (default to NORTH_WEST)*/
+        int centerOffsetX = shadowSize;
+        int centerOffsetY = shadowSize;
+        int rectOffsetX = 0;
+        int rectOffsetY = 0;
+
+        /*north east?*/
+        if (dX > 0 && dY < 0) {
+            centerOffsetX = 0;
+            rectOffsetX += shadowSize;
+        }
+        /*south west?*/
+        if (dX < 0 && dY > 0) {
+            centerOffsetY = 0;
+            rectOffsetY += shadowSize;
+        }
+        /*south east*/
+        if (dX > 0 && dY > 0) {
+            centerOffsetX = 0;
+            centerOffsetY = 0;
+            rectOffsetX += shadowSize;
+            rectOffsetY += shadowSize;
+        }
+
+        GraphicsPath path = new GraphicsPath();
+        path.AddRectangle(
+            new Rectangle(
+                rX - rectOffsetX, rY - rectOffsetY,
+                shadowSize * 2, shadowSize * 2));
+
+        PathGradientBrush brush = new PathGradientBrush(path);
+        brush.CenterPoint = new PointF(rX + centerOffsetX, rY + centerOffsetY);
+        brush.CenterColor = gColor1;
+        brush.SurroundColors = new Color[] { gColor2 };
+        renderer.SetBrush(brush);
+
+        renderer.FillQuad(
+            rX, rY,
+            shadowSize, shadowSize);
+
+        #endregion
+    }
+
+    private Color getColorAtPoint(Color source, Color target, float p) {
+        if ((target.ToArgb() & 0x00ffffff) > (source.ToArgb() & 0x00ffffff)) {
+            Color t = source;
+            source = target;
+            target = t;
+        }
+
+        int deltaR = target.R - source.R;
+        int deltaG = target.G - source.G;
+        int deltaB = target.B - source.B;
+
+
+        return Color.FromArgb(
+            source.A,
+
+            source.R + (int)(deltaR * p),
+            source.G + (int)(deltaG * p),
+            source.B + (int)(deltaB * p));
+
+
+    }
+
+    private Color changeLight(Color c, float p) {
+        return Color.FromArgb(
+            c.A,
+            (int)(c.R * p),
+            (int)(c.G * p),
+            (int)(c.B * p));
+    }
+
     private List<VisibleBlock> getVisibleBlocks(IRenderContext context) {
         List<VisibleBlock> buffer = new List<VisibleBlock>();
         p_Map.Lock();
@@ -242,8 +443,7 @@ public unsafe class MapRenderer {
 
         //get the camera info
         Camera cam = p_Camera;
-        int blockWidth = cam.BlockWidth;
-        int blockHeight = cam.BlockHeight;
+        int blockSize = cam.BlockSize;
         int camX = cam.X;
         int camY = cam.Y;
         int screenWidth = context.Width;
@@ -255,8 +455,8 @@ public unsafe class MapRenderer {
         int rY = -cam.Y;
 
         //define the offset of where in the matrix we start actually searching.
-        int offsetX = (int)Math.Floor(camX * 1.0f / blockWidth);
-        int offsetY = (int)Math.Floor(camY * 1.0f / blockHeight);
+        int offsetX = (int)Math.Floor(camX * 1.0f / blockSize);
+        int offsetY = (int)Math.Floor(camY * 1.0f / blockSize);
         if (offsetX < 0) { offsetX = 0; }
         if (offsetY < 0) { offsetY = 0; }
 
@@ -269,8 +469,8 @@ public unsafe class MapRenderer {
         }
 
         //point the render x/y to the offset location.
-        rX += offsetX * blockWidth;
-        rY += offsetY * blockHeight;
+        rX += offsetX * blockSize;
+        rY += offsetY * blockSize;
 
         //read the matrix
         Block* matrix = p_Map.GetBlockMatrix();
@@ -298,40 +498,30 @@ public unsafe class MapRenderer {
 
                 //reset x/y
                 x = offsetX;
-                rX = -camX + (offsetX * blockWidth);
+                rX = -camX + (offsetX * blockSize);
                 
                 y++;
-                rY += blockHeight;
+                rY += blockSize;
                 if (y == height) { break; }
                 continue;
             }
-            if (rX + blockWidth <= 0 || rY + blockHeight <= 0) {
+            if (rX + blockSize <= 0 || rY + blockSize <= 0) {
                 visible = false;
             }
 
             //add to return if it is visible
-            if (visible) {
-                /*is this block a water block?
-                  if so, deturmine it's shadow
-                 */
-                List<Direction> directions = null;
-                if ((*block).TypeID == BlockType.TERRAIN_WATER) {
-                    directions = getAdjacentGrassDirection(x, y);
-                }
-
-
+            if (visible) {                  
                 buffer.Add(new VisibleBlock() { 
                     RenderX = rX, 
                     RenderY = rY,
                     BlockX = x,
                     BlockY = y,
-                    Block = block,
-                    ShadowDirection = directions
+                    Block = block
                 });
             }
 
             x++;
-            rX += blockWidth;
+            rX += blockSize;
 
             //x at end of row?
             if (x == width) {                 
@@ -344,8 +534,8 @@ public unsafe class MapRenderer {
                 ptr = ptrLineEnd + offsetX;
                 ptrLineEnd += width;
 
-                rX = -cam.X + (offsetX * blockWidth);
-                rY += blockHeight;
+                rX = -cam.X + (offsetX * blockSize);
+                rY += blockSize;
             }
             
         }
@@ -363,128 +553,36 @@ public unsafe class MapRenderer {
         return buffer;
     }
 
-    private void drawWaterShadow(IRenderer renderer, Direction direction, VisibleBlock block, int blockWidth, int blockHeight) {
-        const int shadowWidth = 10;
+    private bool isCoastline(Block* ptr, Block* matrix, out Direction direction, int x, int y, int width, int height) {
+        Block* ptrEnd = matrix + (width * height);
+
+        //get adjacent blocks
+        Block* top = ptr - width;
+        Block* left = ptr - 1;
+        Block* right = ptr + 1;
+        Block* bottom = ptr + width;
         
-        /*get the bounds of the shadow*/
-        int boundsX = 0, boundsY = 0;
-        int boundsWidth = 0, boundsHeight = 0;
-        getShadowBounds(
-            direction,
-            blockWidth, blockHeight,
-            ref boundsX,
-            ref boundsY,
-            ref boundsWidth,
-            ref boundsHeight,
-            shadowWidth);
-        boundsX += block.RenderX;
-        boundsY += block.RenderY;
+        //check 
+        int typeID = BlockType.TERRAIN_WATER;
+        direction = Direction.NONE;
 
-        renderer.SetBrush(Brushes.LightBlue);
-        
-        renderer.FillQuad(
-            boundsX, boundsY,
-            boundsWidth, boundsHeight);
-    }
-    private void swap<T>(ref T v1, ref T v2) {
-        T tmp = v2;
-        v2 = v1;
-        v1 = tmp;
-    }
-    private void getShadowBounds(Direction direction, int blockWidth, int blockHeight, 
-                                 ref int x, ref int y, ref int width, ref int height, int shadowWidth) { 
-        
-        //default width/height to block size
-        width = blockWidth;
-        height = blockHeight;
+        if ((*ptr).TypeID == BlockType.TERRAIN_WATER) { return false; }
 
-        //deturmine size
-        if (
-            (direction & Direction.NORTH) == Direction.NORTH ||
-            (direction & Direction.SOUTH) == Direction.SOUTH) {
-                height = shadowWidth;
+        if (y > 0 && (*top).TypeID == typeID) {
+            direction |= Direction.NORTH;
         }
-        if (
-            (direction & Direction.EAST) == Direction.EAST ||
-            (direction & Direction.WEST) == Direction.WEST) {
-                width = shadowWidth;
+        if (x > 0 && (*left).TypeID == typeID) {
+            direction |= Direction.WEST;
+        }
+        if (y < height && bottom < ptrEnd && (*bottom).TypeID == typeID) {
+            direction |= Direction.SOUTH;
+        }
+        if (x < width && (*right).TypeID == typeID) {
+            direction |= Direction.EAST;
         }
 
-        //deturmine location
-        x = y = 0;
-        if ((direction & Direction.EAST) == Direction.EAST) {
-            x = blockWidth - shadowWidth;
-        }
-        if ((direction & Direction.SOUTH) == Direction.SOUTH) {
-            y = blockHeight - shadowWidth;
-        }
-    }
 
-
-    private List<Direction> getAdjacentGrassDirection(int x, int y) {
-        Map map = p_Map;
-        int width = map.Width;
-        int height = map.Height;
-
-        //get the block matrix
-        map.Lock();
-        Block* matrix = map.GetBlockMatrix();
-
-        //define the locations of all 8 adjacent nodes (including diagonal)
-        Point[] points = new Point[] {
-            new Point(x - 1, y),
-            new Point(x,     y - 1),
-            new Point(x + 1, y),
-            new Point(x,     y + 1),
-
-            new Point(x - 1, y - 1),
-            new Point(x + 1, y - 1),
-            new Point(x - 1, y + 1),
-            new Point(x + 1, y + 1)
-
-        };
-
-        List<Direction> buffer = new List<Direction>();
-
-        //iterate through all adjacent locations
-        int l = points.Length;
-        for(int c = 0; c < l; c++) {
-            Point p = points[c];
-            int pX = p.X;
-            int pY = p.Y;
-
-            //valid?
-            if (pX < 0 || pY < 0 ||
-               pX >= width || pY >= height) {
-                   continue;
-            }
-               
-            //resolve the block at this x/y
-            Block* block = matrix + (pY * width) + pX;
-
-            //grass?
-            if ((*block).TypeID == BlockType.TERRAIN_WATER) {
-                continue;
-            }
-
-            //deturmine the direction of this point
-            Direction direction = Direction.NONE;
-            if (pX < x) { direction |= Direction.WEST; }
-            else if(pX > x) { direction |= Direction.EAST; }
-
-            if (pY < y) { direction |= Direction.NORTH; }
-            else if(pY > y) { direction |= Direction.SOUTH; }
-
-            //add
-            buffer.Add(direction);
-        }
-
-        if (buffer.Count == 0) { return null; }
-
-        //clean up
-        map.Unlock();
-        return buffer;
-
+        return (direction != Direction.NONE);
     }
 
     public List<VisibleBlock> VisibleBlocks { 
@@ -494,6 +592,7 @@ public unsafe class MapRenderer {
             }
         } 
     }
+
 
     public event OnBeginFrameRenderEventHandler BeginRenderFrame;
     public event OnEndFrameRenderEventHandsler EndRenderFrame;

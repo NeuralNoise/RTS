@@ -35,12 +35,20 @@ public class Game {
             p_Window.Focus();
             p_Window.BringToFront();
 
+            cmd("toggle fog");
+            cmd("warp 0 0");
+            cmd("toggle los");
+            cmd("zoom 0 0");
+
+            cmd("toggle debug");
+            cmd("toggle debug full");
+
             testCode();
         };
 
         /*initialize camera*/
         p_Camera = new Camera(this);
-        p_Camera.ZoomAbs(32, 32);
+        p_Camera.ZoomAbs(32);
         p_Camera.MoveCenter(250, 250);
 
         /*initialize map*/
@@ -113,12 +121,7 @@ public class Game {
         sight = new LineOfSight(250, 250, 5);
         p_CurrentPlayer.Fog.AddLOS(sight);
         p_CurrentPlayer.Fog.UpdateLOS();
-
-        onDebugPrompt("toggle fog");
-        onDebugPrompt("warp 0 0");
-        onDebugPrompt("toggle los");
-        onDebugPrompt("zoom 0 0");
-        
+       
 
         p_Window.MouseDown += delegate(object sender, MouseEventArgs e) {
             Point mousePosition = PointToClient(Cursor.Position);
@@ -209,7 +212,7 @@ public class Game {
             TextBox t = sender as TextBox;
             t.Parent.Controls.Remove(t);
             p_DebugPrompt = false;
-            try { onDebugPrompt(t.Text); }
+            try { cmd(t.Text); }
             catch (Exception ex) {
                 if (ex.Message == "Debug crash") {
                     throw ex;
@@ -219,7 +222,7 @@ public class Game {
         };
     
     }
-    private void onDebugPrompt(string str) {
+    private void cmd(string str) {
         str = str.ToLower();
         string[] txt = str.Split(' ');
         txt = removeBlankStr(txt);
@@ -227,6 +230,16 @@ public class Game {
         switch (txt[0]) { 
             case "crash":
                 throw new Exception("Debug crash");
+
+            case "speed":
+                if (txt[1] == "logic") {
+                    p_LogicHeartbeat.Speed(Convert.ToInt32(txt[2]));
+                }
+                if (txt[1] == "render") {
+                    p_RenderHeartbeat.Speed(Convert.ToInt32(txt[2]));
+                }
+                break;
+
 
             case "logic":
                 p_LogicDisabled = txt[1] == "disable";
@@ -239,8 +252,7 @@ public class Game {
                 break;
             case "zoom":
                 p_Camera.ZoomAbs(
-                    Convert.ToInt32(txt[1]),
-                    Convert.ToInt32(txt[2]));
+                    Convert.ToInt32(txt[1]));
                 break;
             case "toggle":
                 if (txt[1] == "debug") {
@@ -281,6 +293,7 @@ public class Game {
 
     public delegate T Func<T>();
     private void updateDebug() {
+
         #region get debug string
         string dbgString = p_RenderHeartbeat.Rate + "fps";
 
@@ -302,7 +315,7 @@ public class Game {
                 "Blocks rendered: " + p_MapRenderer.VisibleBlocks.Count + "\n" +
                 "Blocks revealed: " + fog.BlocksRevealed + "/" + (p_Map.Width * p_Map.Height) +
                     " [" + (fog.BlocksRevealed * 1.0f / (p_Map.Width * p_Map.Height) * 100).ToString("0.00") + "%]\n" +
-                "Block size: " + p_Camera.BlockWidth + "x" + p_Camera.BlockHeight + "\n" +
+                "Block size: " + p_Camera.BlockSize + "\n" +
                 "Cursor position: [L]" +
                     getPointString(mousePosition) + " [S]" +
                     getPointString(Cursor.Position) + " [B]" +
@@ -582,7 +595,7 @@ public class Game {
        
         //adjust zoom
         int v = (e.Delta < 0 ? -1 : 1);
-        p_Camera.Scale(v * 10, v * 10);
+        p_Camera.Scale(v * 10);
 
         //move camera to the block where the mouse is.
         if (hasBlock) {
@@ -652,7 +665,7 @@ public class Game {
             foreach (Point p in path) {
                 Block* b = matrix + (p.Y * Map.Width) + p.X;
 
-                if ((*b).TypeID == BlockType.TERRAIN_WATER) { break; }
+                if ((*b).TypeID == BlockType.TERRAIN_GRASS) { break; }
 
                 (*b).Selected = true;
 
@@ -890,8 +903,8 @@ public class Game {
         Camera cam = p_Camera;
 
         int blockX, blockY;
-        blockX = (int)Math.Ceiling((cam.X + cWidth) * 1.0f / cam.BlockWidth);
-        blockY = (int)Math.Ceiling((cam.Y + cHeight) * 1.0f / cam.BlockHeight);
+        blockX = (int)Math.Ceiling((cam.X + cWidth) * 1.0f / cam.BlockSize);
+        blockY = (int)Math.Ceiling((cam.Y + cHeight) * 1.0f / cam.BlockSize);
 
         //handle the actual resize by resizing the context
         p_Window.RecreateContext();
@@ -903,6 +916,8 @@ public class Game {
     }
        
     private unsafe void uiBlocksSelected(List<VisibleBlock> blocks) {
+        return;
+
         if (p_SelectedBlocks != null) {
             foreach (VisibleBlock b in p_SelectedBlocks) {
                 (*(b.Block)).Selected = false;
@@ -913,13 +928,12 @@ public class Game {
 
         if (blocks == null) { return; }
         foreach (VisibleBlock b in blocks) {
-            if ((*b.Block).TypeID > 1) {
-                (*b.Block).TypeID = 0;
-            }
+
         }
         p_SelectedBlocks = blocks;
     
     }
+
 
     public Point PointToClient(Point p) {
         return new Point(
@@ -976,6 +990,9 @@ public class Game {
         string filename;
         string repString = crashToFile(ex, null, out filename);
         
+        //re-enable mouse
+        Cursor.Show();
+
         //any key to exit
         p_Window.FormClosing += delegate(object sender, FormClosingEventArgs e) {
             System.Diagnostics.Process.GetCurrentProcess().Kill();
@@ -998,9 +1015,11 @@ public class Game {
             p_Window.Close();
         };
 
+        crashAnimateInit();
+
         //hijack rendering
         p_RenderHeartbeat = new Heartbeat("render");
-        p_RenderHeartbeat.Speed(50);
+        p_RenderHeartbeat.Speed(4);
         p_RenderHeartbeat.Start(this, delegate(object st) {
             Game gm = st as Game;
 
@@ -1010,7 +1029,9 @@ public class Game {
             renderer.BeginFrame(ctx);
 
             renderer.SetColor(Color.Black);
-            renderer.Clear();            
+            renderer.Clear();
+
+            crashAnimateDraw(ctx, renderer);
 
             renderer.SetFont(new Font("Arial", 70, FontStyle.Bold));
             Size crashTxtSize = renderer.MeasureString(":(");
@@ -1083,6 +1104,134 @@ public class Game {
                      "Target site: \"" + ex.TargetSite + "\"\r\n" +
                      "Stack:\r\n" + ex.StackTrace;
         return buffer;
+    }
+
+
+    private class crashAnimatedBlock {
+        public int vX, vY;
+        public int x, y;
+        public int width, height;
+        public Color color;
+
+        public crashAnimatedBlock(int px, int py, int vx, int vy, int w, int h, Color c) {
+            x = px;
+            y = py;
+            vX = vx;
+            vY = vy;
+            color = c;
+            width = w;
+            height = h;
+        }
+
+    }
+    private crashAnimatedBlock[] p_CrashAnimatedBlocks;
+
+    private void crashAnimateInit() {
+        Size windowSize = p_Window.ClientSize;
+        int width=windowSize.Width;
+        int height=windowSize.Height;
+
+        int blockWidth=100;
+        int blockHeight=100;
+
+        int v = 4;
+
+        p_CrashAnimatedBlocks = new crashAnimatedBlock[] { 
+            
+            new crashAnimatedBlock(0, 0, v, v, blockWidth, blockHeight, Color.Red),
+            new crashAnimatedBlock(width-blockWidth, 0, -v, v, blockWidth, blockHeight, Color.Lime),
+            new crashAnimatedBlock(0, height-blockHeight, v, -v, blockWidth, blockHeight, Color.Blue),
+            new crashAnimatedBlock(width-blockWidth,height-blockHeight,-v,-v,blockWidth, blockHeight, Color.Yellow),
+
+            new crashAnimatedBlock((width/2)-(blockWidth/2), (height/2)-(blockHeight/2), v,v, 100,100, Color.Purple)
+
+        };
+    }
+    private void crashAnimateDraw(IRenderContext ctx, IRenderer renderer) {
+        renderer.SetFont(new Font("Arial", 40));
+        string blockStr = ":(";
+        Size strSize = renderer.MeasureString(blockStr);
+
+        List<crashAnimatedBlock> swapped = new List<crashAnimatedBlock>();
+
+        Random r = new Random();
+
+        foreach (crashAnimatedBlock b in p_CrashAnimatedBlocks) { 
+            //update
+            if (r.Next(0, 500) == 100) {
+                b.vX = 0;
+                b.vY = 0;
+            }
+            if (r.Next(0, 100) == 30) {
+                b.vX += 1;
+            }
+            if (r.Next(0, 100) == 50) {
+                b.vY += 1;
+            }
+            int max = 4;
+            if (b.vX < -max) { b.vX = -max; }
+            if (b.vX > max) { b.vX = max; }
+            if (b.vY < -max) { b.vY = -max; }
+            if (b.vY > max) { b.vY = max; }
+            
+
+            b.x += b.vX;
+            b.y += b.vY;
+            if (b.x < 0 || b.x + b.width > ctx.Width) {
+                b.vX = -b.vX;
+                b.x += b.vX;
+            }
+            if (b.y < 0 || b.y + b.height > ctx.Height) {
+                b.vY = -b.vY;
+                b.y += b.vY;
+            }
+
+            //get bounds
+            Rectangle bounds = new Rectangle(b.x, b.y, b.width, b.height);
+
+            //collided?
+            bool collide = false;
+            foreach (crashAnimatedBlock c in p_CrashAnimatedBlocks) {
+                if (c == b) { continue; }
+                
+                Rectangle cB = new Rectangle(c.x, c.y, c.width, c.height);
+                if (cB.IntersectsWith(bounds)) { 
+                    //swap colors
+                    if (!swapped.Contains(c) && !swapped.Contains(b)) {
+                        Color t = b.color;
+                        b.color = c.color;
+                        c.color = t;
+                        swapped.Add(c);
+                    }
+
+                    collide = true;
+                }
+            }
+
+            renderer.SetBrush(new SolidBrush(b.color));
+            renderer.FillQuad(
+                b.x, b.y,
+                b.width, b.height);
+
+
+            renderer.SetBrush(Brushes.Black);
+            renderer.DrawString(
+                blockStr,
+                b.x + (b.width / 2) - (strSize.Width / 2),
+                b.y + (b.height / 2) - (strSize.Height / 2));
+            if (collide) {
+                b.vX = -b.vX;
+                b.vY = -b.vY;
+            }
+
+        }
+
+        renderer.SetBrush(new SolidBrush(Color.FromArgb(140, 0, 0, 0)));
+        renderer.FillQuad(
+            0, 0,
+            ctx.Width, ctx.Height);
+
+
     }
     #endregion
 }

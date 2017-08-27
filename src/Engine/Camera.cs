@@ -10,14 +10,11 @@
 using System;
 using System.Drawing;
 
-public sealed class Camera : IAnimatePosition, IAnimateScale {
-    private const int BLOCKSIZE_W_MIN = 16;
-    private const int BLOCKSIZE_H_MIN = 16;
-    private const int BLOCKSIZE_W_MAX = 48;
-    private const int BLOCKSIZE_H_MAX = 48;
+public sealed class Camera : IAnimatePosition {
+    private const int BLOCKSIZE_MIN = 16;
+    private const int BLOCKSIZE_MAX = 48;
 
-    private int p_BlockSizeW = BLOCKSIZE_W_MAX, 
-                p_BlockSizeH = BLOCKSIZE_H_MAX;
+    private int p_BlockSize;
     private int p_X, p_Y;
 
     private bool p_AllowMargin;
@@ -38,8 +35,8 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
             Map map = p_Game.Map;
 
             //translate margin to render x/y
-            int marginW = p_MarginWidth * p_BlockSizeW;
-            int marginH = p_MarginHeight * p_BlockSizeH;
+            int marginW = p_MarginWidth * p_BlockSize;
+            int marginH = p_MarginHeight * p_BlockSize;
 
             //check mins
             if (p_X < -marginW) { p_X = -marginW; }
@@ -48,8 +45,8 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
             //check max
             Size blocksPerFrame = BlocksInFrame;
 
-            int maxX = marginW + ((map.Width - blocksPerFrame.Width) * p_BlockSizeW);
-            int maxY = marginH + ((map.Height - blocksPerFrame.Height) * p_BlockSizeH);
+            int maxX = marginW + ((map.Width - blocksPerFrame.Width) * p_BlockSize);
+            int maxY = marginH + ((map.Height - blocksPerFrame.Height) * p_BlockSize);
             if (p_X > maxX) { p_X = maxX; }
             if (p_Y > maxY) { p_Y = maxY; }
         }
@@ -59,37 +56,30 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
             CameraChanged(this);
         }
     }
-    public void Scale(int dX, int dY) {
+    public void Scale(int d) {
         //deturmine the block the camera is currently at.
         //so we can later move the camera back to this position.
         //note: the position WILL change since the resize will
         //essentially push all blocks forwards or backwards.
-        int x = (int)(p_X * 1.0f / p_BlockSizeW);
-        int y = (int)(p_Y * 1.0f / p_BlockSizeH);
+        int x = (int)(p_X * 1.0f / p_BlockSize);
+        int y = (int)(p_Y * 1.0f / p_BlockSize);
 
-        p_BlockSizeW += dX;
-        p_BlockSizeH += dY;
+        p_BlockSize += d;
 
         //check
-        if (p_BlockSizeW <= BLOCKSIZE_W_MIN) {
-            p_BlockSizeW = BLOCKSIZE_W_MIN;
+        if (p_BlockSize <= BLOCKSIZE_MIN) {
+            p_BlockSize = BLOCKSIZE_MIN;
         }
-        if (p_BlockSizeW >= BLOCKSIZE_W_MAX) {
-            p_BlockSizeW = BLOCKSIZE_W_MAX;
+        if (p_BlockSize >= BLOCKSIZE_MAX) {
+            p_BlockSize = BLOCKSIZE_MAX;
         }
 
-        if (p_BlockSizeH <= BLOCKSIZE_H_MIN) {
-            p_BlockSizeH = BLOCKSIZE_H_MIN;
-        }
-        if (p_BlockSizeH >= BLOCKSIZE_H_MAX) {
-            p_BlockSizeH = BLOCKSIZE_H_MAX;
-        }
 
         //move to the old position since the 
         //camera would of moved due to the resize.
         MoveAbs(
-            x * p_BlockSizeW,
-            y * p_BlockSizeH);
+            x * p_BlockSize,
+            y * p_BlockSize);
 
         //fire changed
         if (CameraChanged != null) {
@@ -109,10 +99,8 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
             -p_X + x,
             -p_Y + y);
     }
-    public void ZoomAbs(int x, int y) {
-        Scale(
-            -p_BlockSizeW + x,
-            -p_BlockSizeH + y);
+    public void ZoomAbs(int size) {
+        Scale(-p_BlockSize + size);
     }
 
     public void MoveCenter() {
@@ -127,12 +115,12 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
         Size blocksInFrame = BlocksInFrame;
         int width = blocksInFrame.Width;
         int height = blocksInFrame.Height;
-        width *= p_BlockSizeW;
-        height *= p_BlockSizeH;
+        width *= p_BlockSize;
+        height *= p_BlockSize;
 
         //convert block location to render location
-        blockX *= p_BlockSizeW;
-        blockY *= p_BlockSizeH;
+        blockX *= p_BlockSize;
+        blockY *= p_BlockSize;
 
         //move the camera so it has the render x/y in the center
         //of the frame
@@ -156,21 +144,12 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
         }
     }
 
-    public int Width {
-        get { return p_BlockSizeW; }
+    public int BlockSize {
+        get { return p_BlockSize; }
         set {
-            ZoomAbs(value, p_BlockSizeH);
+            ZoomAbs(value);
         }
     }
-    public int Height {
-        get { return p_BlockSizeH; }
-        set {
-            ZoomAbs(p_BlockSizeW, value);
-        }
-    }
-
-    public int BlockWidth { get { return p_BlockSizeW; } }
-    public int BlockHeight { get { return p_BlockSizeH; } }
 
     public bool EnableMargin {
         get { return p_AllowMargin; }
@@ -182,8 +161,8 @@ public sealed class Camera : IAnimatePosition, IAnimateScale {
             IRenderContext ctx = p_Game.Window.Context;
 
             return new Size(
-                (int)Math.Ceiling(ctx.Width * 1.0f / p_BlockSizeW),
-                (int)Math.Ceiling(ctx.Height * 1.0f / p_BlockSizeH));
+                (int)Math.Ceiling(ctx.Width * 1.0f / p_BlockSize),
+                (int)Math.Ceiling(ctx.Height * 1.0f / p_BlockSize));
         }
     }
     

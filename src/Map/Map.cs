@@ -152,14 +152,19 @@ public unsafe class Map : IDisposable {
 
             //deturmine the terrain block
             short blockType = BlockType.TERRAIN_GRASS;
-            if (value < 5) { blockType = BlockType.TERRAIN_WATER; }
+            if (value < 10) { 
+                blockType = BlockType.TERRAIN_WATER;
+                (*block).Height = (byte)(value * 1.0f * 2);
+            }
             else if (value < 20) { blockType = BlockType.TERRAIN_GRASS; }
             else if (value > 40) { blockType = BlockType.RESOURCE_WOOD; }
+
 
 
             //is the block a grass block? if so, we could place
             //a resource here.
             if (blockType == BlockType.TERRAIN_GRASS) {
+                (*block).Height = (byte)value;
                 value = seed.Next(0, 100);
 
                 //one in 5 chance it not be a resource?
