@@ -1,0 +1,17 @@
+/*
+ *  THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY
+ *  KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR
+ *  PURPOSE. IT CAN BE DISTRIBUTED FREE OF CHARGE AS LONG AS THIS HEADER 
+ *  REMAINS UNCHANGED.
+ *
+ *  REPO: http://www.github.com/tomwilsoncoder/RTS
+*/
+using System.Drawing;
+
+public static partial class Globals {
+
+    public static readonly Color COLOR_TERRAIN_GRASS = Color.FromArgb(255, 58, 124, 37);
+    public static readonly Color COLOR_TERRAIN_WATER = Color.FromArgb(255, 69, 173, 168);
+
+}

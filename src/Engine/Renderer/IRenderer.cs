@@ -22,6 +22,7 @@ public interface IRenderer {
     void Lock();
     void Unlock();
 
+    void SetTexture(Bitmap bitmap);
     void SetColor(Color color);
     void SetBrush(Brush brush);
     void SetPen(Pen pen);
@@ -44,8 +45,8 @@ public interface IRenderer {
     void DrawString(string str, int x, int y);
     Size MeasureString(string str);
 
-    void DrawImage(Bitmap btm, int x, int y, int w, int h);
-    void DrawImageUnscaled(Bitmap btm, int x, int y);
+    void DrawTexture(int x, int y, int w, int h);
+    void DrawTextureUnscaled(int x, int y);
 
     IRenderContext Context { get; }
 

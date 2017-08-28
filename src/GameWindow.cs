@@ -82,6 +82,7 @@ public sealed class GameWindow : Form {
             p_Context.Dispose();
         }
         p_Context = RenderFactory.CreateContext(Handle);
+        p_Context.Resize(ClientSize.Width, ClientSize.Height);
     }
 
     public void UnhookCoreEvents() {

@@ -7,9 +7,9 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
 using System.Drawing;
+using System.Threading;
 
 
 public class UILabel : UIControl {
@@ -19,6 +19,7 @@ public class UILabel : UIControl {
     private Brush p_ForeBrush;
     private TextAlign p_Align;
     private Brush p_ShadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black));
+    private object p_Mutex = new object();
 
     private string[] p_Lines;
 
@@ -60,7 +61,9 @@ public class UILabel : UIControl {
         Size = p_SizeRenderer.MeasureString(p_Text);
 
         //update text information
-        p_Lines = p_Text.Split('\n');
+        lock (p_Mutex) {
+            p_Lines = p_Text.Split('\n');
+        }
     }
 
     public override void Update() { }
@@ -82,12 +85,18 @@ public class UILabel : UIControl {
                 rX, rY);
             return;
         }
-        
+
+        //clone the current lines so any concurrent thread
+        //to change it won't be blocked until we render.
+        string[] lines = null;
+        lock (p_Mutex) {
+            lines = (string[])p_Lines.Clone();
+        }
 
         /*grab each line of text*/
-        int lineLength = p_Lines.Length;
+        int lineLength = lines.Length;
         for (int c = 0; c < lineLength; c++) {
-            string line = p_Lines[c];
+            string line = lines[c];
 
             //get the render size of the text
             Size lineSize = p_SizeRenderer.MeasureString(line);
@@ -119,9 +128,6 @@ public class UILabel : UIControl {
                 rY);
             rY += lineSize.Height;
         }
-        
-
-
     }
 
     private void drawShadow(IRenderer renderer, string text, int x, int y, int shadowSize) {

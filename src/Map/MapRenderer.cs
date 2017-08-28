@@ -88,7 +88,7 @@ public unsafe class MapRenderer {
         */
         foreach (VisibleBlock block in visible) {
             /*draw coastline*/
-            if ((*block.Block).TypeID != BlockType.TERRAIN_WATER) {
+            if ((*block.Block).TypeID != Globals.TERRAIN_WATER) {
                 drawCoastBlock(
                     context,
                     renderer,
@@ -193,32 +193,32 @@ public unsafe class MapRenderer {
 
     private void drawBlock(IRenderContext context, IRenderer renderer, VisibleBlock vBlock, bool* los) {
         Block block = *vBlock.Block;
-        Color color = Color.Green;
+        Color color = Globals.COLOR_TERRAIN_GRASS;
         Camera camera = p_Camera;
         int blockSize = camera.BlockSize;
 
-        switch (block.TypeID) { 
-            case BlockType.TERRAIN_WATER: color = Color.DodgerBlue;  break;
-            case BlockType.RESOURCE_WOOD: color = Color.Brown; break;
-            case BlockType.RESOURCE_FOOD: color = Color.Red; break;
-            case BlockType.RESOURCE_STONE: color = Color.Silver; break;
-            case BlockType.RESOURCE_GOLD: color = Color.Gold; break;
+        switch (block.TypeID) {
+            case Globals.TERRAIN_WATER: color = Globals.COLOR_TERRAIN_WATER; break;
+            case Globals.RESOURCE_WOOD: color = Color.Brown; break;
+            case Globals.RESOURCE_FOOD: color = Color.Red; break;
+            case Globals.RESOURCE_STONE: color = Color.Gray; break;
+            case Globals.RESOURCE_GOLD: color = Color.Gold; break;
+        }
+
+        /*add depth to water and grass*/
+        if (block.TypeID == Globals.TERRAIN_GRASS) {
+            color = getColorAtPoint(
+                Globals.COLOR_TERRAIN_GRASS, Color.Black,
+                (block.Height * 1.0f / 150));
+        }
+        if (block.TypeID == Globals.TERRAIN_WATER) {
+            color = getColorAtPoint(
+                Globals.COLOR_TERRAIN_WATER, changeLight(Globals.COLOR_TERRAIN_WATER, .4f),
+                (block.Height * 1.0f / 100));
         }
 
         if (block.Selected) {
             color = Color.White;
-        }
-
-        /*add depth*/
-        if (block.TypeID == BlockType.TERRAIN_GRASS) {
-            color = getColorAtPoint(
-                Color.Green, Color.Black,
-                (block.Height * 1.0f / 150));
-        }
-        if (block.TypeID == BlockType.TERRAIN_WATER) {
-            color = getColorAtPoint(
-                Color.DodgerBlue, Color.Black,
-                (block.Height * 1.0f / 100));
         }
 
         //render the block
@@ -259,7 +259,7 @@ public unsafe class MapRenderer {
         /*define gradient start/end x/y*/
         int gradientStartX, gradientStartY,
             gradientEndX, gradientEndY;
-        Color gColor1 = changeLight(Color.DodgerBlue, 0.4f);
+        Color gColor1 = changeLight(Globals.COLOR_TERRAIN_WATER, 0.4f);
         Color gColor2 = Color.Transparent;
 
         #region draw basic border
@@ -563,10 +563,10 @@ public unsafe class MapRenderer {
         Block* bottom = ptr + width;
         
         //check 
-        int typeID = BlockType.TERRAIN_WATER;
+        int typeID = Globals.TERRAIN_WATER;
         direction = Direction.NONE;
 
-        if ((*ptr).TypeID == BlockType.TERRAIN_WATER) { return false; }
+        if ((*ptr).TypeID == Globals.TERRAIN_WATER) { return false; }
 
         if (y > 0 && (*top).TypeID == typeID) {
             direction |= Direction.NORTH;

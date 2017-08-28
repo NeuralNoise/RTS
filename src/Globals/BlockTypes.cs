@@ -9,7 +9,7 @@
 */
 
 
-public static class BlockType {
+public static partial class Globals {
     public const short TERRAIN_END = 5;
 
     public const short TERRAIN_GRASS = 0;

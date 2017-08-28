@@ -7,141 +7,126 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-/*
- * Translated from C++ to C#
- * 
- * Thanks to Nick Banks on Stack Overflow
- * https://stackoverflow.com/posts/4753123/revisions
-*/
-
+using System;
 
 public sealed class PerlinNoise {
-    private double p_Persistance,
-                   p_Frequency,
-                   p_Amplitude;
-    private int p_Octaves,
-                p_Seed;
-    
 
-    public PerlinNoise() {
-        p_Persistance =
-        p_Frequency =
-        p_Amplitude = 0;
+    private const int B = 0x100;
+    private const int BM = 0xff;
 
-        p_Octaves =
-        p_Seed = 0;
-    }
+    private const int N = 0x1000;
 
-    public PerlinNoise(double persistance, double frequency, double amplitude, int octaves, int seed) {
-        Set(persistance, frequency, amplitude, octaves, seed);
-    }
-    public void Set(double persistance, double frequency, double amplitude, int octaves, int seed) {
-        p_Persistance = persistance;
-        p_Frequency = frequency;
-        p_Amplitude = amplitude;
-        p_Octaves = octaves;
-        p_Seed = seed;
-    }
+    private int[] p = new int[B + B + 2];
+    private float[,] g = new float[B + B + 2, 2];
 
-    public double GetHeight(int x, int y) {
-        return p_Amplitude * total(x, y);
-    }
+    private int[] permutations = {
+        151,160,137,91,90,15, 131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+        8,99,37,240,21,10,23, 190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203, 
+        117,35,11,32,57,177,33, 88,237,149,56,87,174,20,125,136,171,168, 68,175,74,
+        165,71,134,139,48,27,166, 77,146,158,231,83,111,229,122,60,211,133,230,220,
+        105,92,41,55,46,245,40,244, 102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,
+        187,208, 89,18,169,200,196, 135,130,116,188,159,86,164,100,109,198,173,186, 
+        3,64,52,217,226,250,124,123, 5,202,38,147,118,126,255,82,85,212,207,206,59,
+        227,47,16,58,17,182,189,28,42, 223,183,170,213,119,248,152, 2,44,154,163, 70,
+        221,153,101,155,167, 43,172,9, 129,22,39,253, 19,98,108,110,79,113,224,232,178,
+        185, 112,104,218,246,97,228, 251,34,242,193,238,210,144,12,191,179,162,241, 
+        81,51,145,235,249,14,239,107, 49,192,214, 31,181,199,106,157,184, 84,204,176,
+        115,121,50,45,127, 4,150,254, 138,236,205,93,222,114,67,29,24,72,243,141,128,
+        195,78,66,215,61,156,180
+                                 };
 
-    public double Persistance {
-        get { return p_Persistance; }
-        set { p_Persistance = value; }
-    }
-    public double Frequency {
-        get { return p_Frequency; }
-        set { p_Frequency = value; }
-    }
-    public double Amplitude {
-        get { return p_Amplitude; }
-        set { p_Amplitude = value; }
-    }
-    public int Octaves {
-        get { return p_Octaves; }
-        set { p_Octaves = value; }
-    }
-    public int Seed {
-        get { return p_Seed; }
-        set { p_Seed = value; }
-    }
+    public PerlinNoise(Random rnd) {
+        for (int c = 0; c < B; c++) {
+            p[c] = c;
 
-    private double total(double i, double j) {
-        double buffer = 0.0f;
-        double amp = 1;
-        double freq = p_Frequency;
+            for (int x = 0; x < 2; x++) {
+                g[c, x] = (float)((rnd.NextDouble() * (B + B)) - B) / B;
+            }
 
-        for (int c = 0; c < p_Octaves; c++) {
-            buffer += getValue(
-                j * freq + p_Seed,
-                i * freq + p_Seed) * amp;
-            amp *= p_Persistance;
-            freq *= 2;
+            normalize(ref g[c, 0], ref g[c, 1]);
         }
-        return buffer;
+
+        for (int c = B - 1; c != -1; c--) {
+            int j = (int)(rnd.NextDouble() * B);
+            int k = p[c];
+            p[c] = p[j];
+            p[j] = k;
+        }
+
+        for (int c = 0; c < p.Length; c++) {
+            p[c] = permutations[c % 256];
+        }
+
+        for (int c = 0; c < B + 2; c++) {
+            p[B + c] = p[c];
+            for (int x = 0; x < 2; x++) {
+                g[B + c, x] = g[c, x];
+            }
+        }
     }
-    private double getValue(double x, double y) {
-        int Xint = (int)x;
-        int Yint = (int)y;
-        double Xfrac = x - Xint;
-        double Yfrac = y - Yint;
 
-        //noise values
-        double[] n = {
-            noise(Xint - 1, Yint - 1),
-            noise(Xint + 1, Yint - 1),
-            noise(Xint - 1, Yint + 1),
-            noise(Xint + 1, Yint + 1),
-            noise(Xint - 1, Yint),
-            noise(Xint + 1, Yint),
-            noise(Xint, Yint - 1),
-            noise(Xint, Yint + 1),
-            noise(Xint, Yint),
-
-            //n12 [index: 9]
-            noise(Xint + 2, Yint - 1),
-            noise(Xint + 2, Yint + 1),
-            noise(Xint + 2, Yint),
-
-            //n23-28 [index: 12] 
-            noise(Xint - 1, Yint + 2),
-            noise(Xint + 1, Yint + 2),
-            noise(Xint, Yint + 2),
-
-            //n34 [index: 15]
-            noise(Xint + 2, Yint + 2)
-        };
-
-        //find the noise values of the four corners
-        double x0y0 = 0.0625 * (n[00] + n[01] + n[02] + n[03]) + 0.125 * (n[04] + n[05] + n[06] + n[07]) + 0.25 * (n[08]);
-        double x1y0 = 0.0625 * (n[06] + n[09] + n[07] + n[10]) + 0.125 * (n[08] + n[11] + n[01] + n[03]) + 0.25 * (n[05]);
-        double x0y1 = 0.0625 * (n[04] + n[05] + n[12] + n[13]) + 0.125 * (n[02] + n[03] + n[08] + n[14]) + 0.25 * (n[07]);
-        double x1y1 = 0.0625 * (n[08] + n[11] + n[14] + n[15]) + 0.125 * (n[07] + n[10] + n[05] + n[13]) + 0.25 * (n[03]);
-
-        //interpolate between those values according to the x and y fractions
-        double v1 = interpolate(x0y0, x1y0, Xfrac); //interpolate in x direction (y)
-        double v2 = interpolate(x0y1, x1y1, Xfrac); //interpolate in x direction (y+1)
-        double fin = interpolate(v1, v2, Yfrac);  //interpolate in y direction
-
-        return fin;
+    public float GetHeight(int x, int y, int width, int height)
+    {
+        return GetHeight(
+            x * 1.0f / width,
+            y * 1.0f / height);
     }
-    private double interpolate(double x, double y, double a) {
-        double negA = 1.0f - a;
-        double negAS = negA * negA;
+    public float GetHeight(float x, float y) {
+        int bx0, bx1, by0, by1, b00, b10, b01, b11;
+	    float rx0, rx1, ry0, ry1, sx, sy, a, b, u, v;
+        int i, j;
 
-        double fac1 = 3.0f * negAS - 2.0 * (negAS * negA);
-        double aS = a * a;
-        double fac2 = 3.0f * aS - 2.0 * (aS * a);
+        setup(x, out bx0, out bx1, out rx0, out rx1);
+        setup(y, out by0, out by1, out ry0, out ry1);
 
-        return (x * fac1) + (y * fac2);
+        i = p[bx0];
+        j = p[bx1];
+
+        b00 = p[i + by0];
+        b10 = p[j + by0];
+        b01 = p[i + by1];
+        b11 = p[j + by1];
+
+        sx = curve(rx0);
+        sy = curve(ry0);
+
+        u = at2(rx0, ry0, g[b00, 0], g[b00, 1]);
+        v = at2(rx1, ry0, g[b10, 0], g[b10, 1]);
+        a = lerp(sx, u, v);
+
+
+        u = at2(rx0, ry1, g[b01, 0], g[b01, 1]);
+        v = at2(rx1, ry1, g[b11, 0], g[b11, 1]);
+        b = lerp(sx, u, v);
+
+        return lerp(sy, a, b);
     }
-    private double noise(int x, int y) {
-        int n = x + y * 57;
-        n = (n << 13) ^ n;
 
-        int t = (n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff;
-        return 1.0f - (double)t * 0.931322574615478515625e-9;
+    private void setup(float val, out int b0, out int b1, out float r0, out float r1) {
+        float t = val + N;
+        b0 = ((int)t) & BM;
+        b1 = (b0 + 1) & BM;
+        r0 = t - (int)t;
+        r1 = r0 - 1.0f;
+    }
+
+    private float curve(float t) {
+        return (float)(t * t * (3.0 - 2.0 * t));
+    }
+    private float lerp(float t, float a, float b) {
+        return a + t * (b - a);
+    }
+
+    private float at2(float rx, float ry, float q1, float q2) {
+        return
+            rx * q1 +
+            ry * q2;
+    }
+
+    private void normalize(ref float x, ref float y) {
+        float s = (float)Math.Sqrt((x * x) + (y * y));
+
+        x = x * 1.0f / s;
+        y = y * 1.0f / s;
     }
 }

@@ -68,7 +68,7 @@ public class Heartbeat {
         stateStruct st = (stateStruct)s;
 
         p_StopVerify = false;
-        while (!p_Stop) {            
+        while (!p_Stop) {
             long callbackStart = DateTime.Now.Ticks;
             st.callback(st.state);
 

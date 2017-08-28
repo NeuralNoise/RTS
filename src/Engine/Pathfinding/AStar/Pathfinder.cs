@@ -42,8 +42,6 @@ public static unsafe partial class Pathfinder {
         int width = context.Width;
         int height = context.Height;
 
-        Console.WriteLine("BEGIN PATH (START=" + start + ", END=" + end + ")");
-
         //validate context
         if (!(context is ASContext) || context == null) {
             throw new Exception("Invalid A* search context!");
@@ -66,7 +64,6 @@ public static unsafe partial class Pathfinder {
 
             //not resolved?
             if (!resolved) {
-                Console.WriteLine("NO RESOLVE");
                 return new List<Point>();
             }
             startX = start.X; startY = start.Y;
@@ -75,7 +72,6 @@ public static unsafe partial class Pathfinder {
 
         //already there?
         if (startX == endX && startY == endY) {
-            Console.WriteLine("ALREADY THERE");
             return new List<Point>();
         }
 
@@ -92,7 +88,6 @@ public static unsafe partial class Pathfinder {
         //search
         bool found = ctx.search(startNode, endNode);
         if (!found) {
-            Console.WriteLine("NO ROUTE");
             return new List<Point>();
         }
 

@@ -76,12 +76,29 @@ public sealed class UICursor {
             path.Transform(transform);
 
             renderer.SetBrush(Brushes.White);
-            renderer.FillPath(path);
+            //renderer.FillPath(path);
+
+            PointF[] p = path.PathPoints;
+            Point[] pt = new Point[p.Length];
+            for (int c = 0; c < p.Length; c++) {
+                pt[c] = new Point(
+                    (int)p[c].X,
+                    (int)p[c].Y);
+            }
+            renderer.FillPoly(pt);
             return;
         }
 
-        renderer.DrawImageUnscaled(
-            cursorTestBmp,
+
+        /*OpenGL ONLY (we can't draw textures yet...)*/
+        renderer.FillQuad(
+            mousePosition.X,
+            mousePosition.Y,
+            10, 10);
+
+
+        renderer.SetTexture(cursorTestBmp);
+        renderer.DrawTextureUnscaled(
             mousePosition.X,
             mousePosition.Y);
         return;

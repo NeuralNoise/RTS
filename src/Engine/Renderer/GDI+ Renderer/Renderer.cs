@@ -26,6 +26,7 @@ public class GDIPRenderer : IRenderer {
 
     private bool p_InFrame;
 
+    private Bitmap p_Bitmap;
     private Brush p_Brush;
     private Pen p_Pen;
     private Color p_Color;
@@ -39,6 +40,11 @@ public class GDIPRenderer : IRenderer {
     public Graphics FrameBuffer { get { return p_FrameBuffer; } }
 
     public void BeginFrame(IRenderContext ctx) {
+        //verify
+        if (!(ctx is GDIPRenderContext)) {
+            throw new Exception("Invalid GDI+ render context!");
+        }
+
         p_Context = ctx;
         p_InFrame = true;
 
@@ -100,6 +106,7 @@ public class GDIPRenderer : IRenderer {
         Monitor.Exit(p_Mutex);
     }
 
+    public void SetTexture(Bitmap b) { p_Bitmap = b; }
     public void SetBrush(Brush brush) { p_Brush = brush; }
     public void SetPen(Pen pen) { p_Pen = pen; }
     public void SetColor(Color color) { p_Color = color; }
@@ -167,19 +174,19 @@ public class GDIPRenderer : IRenderer {
             p_Font);
     }
 
-    public void DrawImage(Bitmap bmp, int x, int y, int w, int h) {
+    public void DrawTexture(int x, int y, int w, int h) {
         p_FrameBuffer.DrawImage(
-            bmp,
+            p_Bitmap,
             x, y, w, h);
     }
-    public void DrawImageUnscaled(Bitmap bmp, int x, int y) {
+    public void DrawTextureUnscaled(int x, int y) {
         p_FrameBuffer.DrawImageUnscaled(
-            bmp,
+            p_Bitmap,
             x, y);
     }
 
 
     public override string ToString() {
-        return "GDI+" + typeof(Graphics).Assembly.ImageRuntimeVersion;
+        return "GDI+ " + typeof(Graphics).Assembly.ImageRuntimeVersion;
     }
 }

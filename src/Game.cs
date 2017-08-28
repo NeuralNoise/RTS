@@ -297,6 +297,10 @@ public class Game {
         #region get debug string
         string dbgString = p_RenderHeartbeat.Rate + "fps";
 
+        p_Window.Invoke(new MethodInvoker(delegate {
+            p_Window.Text = dbgString + " (" + p_Window.Renderer + ")";
+        }));
+
         Fog fog = p_CurrentPlayer.Fog;
 
         if (p_DebugFull) {
@@ -386,8 +390,8 @@ public class Game {
         int stepX, stepY;
         stepX = stepY = 15;
 
-        stepX = 25 - (int)(p_RenderHeartbeat.Rate / 60 * 10);
-        stepY = stepX;
+        //stepX = 25 - (int)(p_RenderHeartbeat.Rate / 60 * 10);
+        //stepY = stepX;
 
         /*update cursor*/
         p_Cursor.SetArrow(translateArrowDirection(p_ArrowKeyDown));
@@ -665,7 +669,7 @@ public class Game {
             foreach (Point p in path) {
                 Block* b = matrix + (p.Y * Map.Width) + p.X;
 
-                if ((*b).TypeID == BlockType.TERRAIN_GRASS) { break; }
+                if ((*b).TypeID == Globals.TERRAIN_WATER) { break; }
 
                 (*b).Selected = true;
 

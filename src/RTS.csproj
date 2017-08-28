@@ -121,7 +121,11 @@
   <ItemGroup>
     <Compile Include="Engine\Animation\Base\IScale.cs" />
     <Compile Include="Engine\Enums\Direction.cs" />
-    <Compile Include="Map\Block\BlockType.cs" />
+    <Compile Include="Engine\Renderer\OpenGL\Context.cs" />
+    <Compile Include="Engine\Renderer\OpenGL\Imports.cs" />
+    <Compile Include="Engine\Renderer\OpenGL\Renderer.cs" />
+    <Compile Include="Globals\BlockTypes.cs" />
+    <Compile Include="Globals\Colors.cs" />
     <Compile Include="Map\Block\VisibleBlock.cs" />
     <Compile Include="Map\PerlinNoise.cs" />
   </ItemGroup>
