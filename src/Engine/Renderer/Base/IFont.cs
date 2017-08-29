@@ -7,18 +7,5 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
-using System;
-using System.Drawing;
-
-public interface IRenderContext : IDeviceContext, IDisposable {
-    int Width { get; }
-    int Height { get; }
-
-    void Resize(int w, int h);
-
-    float DPIX { get; }
-    float DPIY { get; }
-
-    bool IsDisposed { get; }
-}
+/*should only be used for internal renderer operations.*/
+public interface IFont { }

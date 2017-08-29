@@ -1,0 +1,27 @@
+/*
+ *  THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY
+ *  KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR
+ *  PURPOSE. IT CAN BE DISTRIBUTED FREE OF CHARGE AS LONG AS THIS HEADER 
+ *  REMAINS UNCHANGED.
+ *
+ *  REPO: http://www.github.com/tomwilsoncoder/RTS
+*/
+
+using System;
+using System.Drawing;
+
+public interface IRenderContext : IDeviceContext, IDisposable {
+    int Width { get; }
+    int Height { get; }
+
+    void Resize(int w, int h);
+
+    ITexture AllocateTexture(Bitmap bmp);
+    IFont AllocateFont(Font font);
+
+    float DPIX { get; }
+    float DPIY { get; }
+
+    bool IsDisposed { get; }
+}

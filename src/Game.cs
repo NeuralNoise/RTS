@@ -44,6 +44,7 @@ public class Game {
             cmd("toggle debug full");
 
             testCode();
+
         };
 
         /*initialize camera*/
@@ -176,8 +177,6 @@ public class Game {
             "[lat]" + h.LastLatency.ToString("0.00") + "ms";
 
     }
-
-    
     #endregion
 
     #region Debug
@@ -293,13 +292,16 @@ public class Game {
 
     public delegate T Func<T>();
     private void updateDebug() {
-
         #region get debug string
         string dbgString = p_RenderHeartbeat.Rate + "fps";
 
-        p_Window.Invoke(new MethodInvoker(delegate {
-            p_Window.Text = dbgString + " (" + p_Window.Renderer + ")";
-        }));
+        try {
+            p_Window.Invoke(new MethodInvoker(delegate {
+                try { p_Window.Text = dbgString + " (" + p_Window.Renderer + ") Build: " + Globals.BUILD; }
+                catch { }
+            }));
+        }
+        catch { }
 
         Fog fog = p_CurrentPlayer.Fog;
 
@@ -316,6 +318,7 @@ public class Game {
             dbgString =
                 "Keys: keys[" + p_CurrentKeys + "] arw[" + p_ArrowKeyDown + "]\n" +
                 "Camera position: " + p_Camera.X + "x" + p_Camera.Y + "\n" +
+                "Vertices: " + p_Window.Renderer.Vertices + "\n" + 
                 "Blocks rendered: " + p_MapRenderer.VisibleBlocks.Count + "\n" +
                 "Blocks revealed: " + fog.BlocksRevealed + "/" + (p_Map.Width * p_Map.Height) +
                     " [" + (fog.BlocksRevealed * 1.0f / (p_Map.Width * p_Map.Height) * 100).ToString("0.00") + "%]\n" +
@@ -332,8 +335,8 @@ public class Game {
 
         p_DebugLabel.Text = dbgString;
         p_DebugLabel.Location = new Point(
-            p_Window.Context.Width - p_DebugLabel.Width,
-            p_Window.Context.Height - p_DebugLabel.Height);
+            p_Window.Context.Width - p_DebugLabel.Width - 10,
+            p_Window.Context.Height - p_DebugLabel.Height - 10);
     }
     #endregion
 
@@ -828,7 +831,14 @@ public class Game {
             case Keys.NumPad6:
                 xv = s; break;
             case Keys.NumPad5:
-                r = 10; break;
+
+
+                p_CurrentPlayer.Fog.AddLOS(new LineOfSight(
+                    sight.CenterX,
+                    sight.CenterY,
+                    10));
+                break;
+
 
             case Keys.NumPad7:
                 xv = -s; yv = -s; break;
@@ -842,7 +852,7 @@ public class Game {
                 return;
         }
 
-
+        
 
         sight.CenterX += xv;
         sight.CenterY += yv;
@@ -911,8 +921,10 @@ public class Game {
         blockY = (int)Math.Ceiling((cam.Y + cHeight) * 1.0f / cam.BlockSize);
 
         //handle the actual resize by resizing the context
-        p_Window.RecreateContext();
-
+        p_Window.Context.Resize(
+            p_Window.ClientSize.Width,
+            p_Window.ClientSize.Height);
+        
         //move the camera to the center block
         cam.MoveCenter(
             blockX,
@@ -1021,6 +1033,13 @@ public class Game {
 
         crashAnimateInit();
 
+        //fallback on GDI+ renderer
+        //RenderFactory.FailSafe();
+
+        //re-initialize renderer since we have left the previous
+        //one in an unknown state.
+        p_Window.RecreateContext();
+
         //hijack rendering
         p_RenderHeartbeat = new Heartbeat("render");
         p_RenderHeartbeat.Speed(4);
@@ -1037,8 +1056,9 @@ public class Game {
 
             crashAnimateDraw(ctx, renderer);
 
-            renderer.SetFont(new Font("Arial", 70, FontStyle.Bold));
-            Size crashTxtSize = renderer.MeasureString(":(");
+            Font crashFont = new Font("Arial", 70, FontStyle.Bold);
+            renderer.SetFont(crashFont);
+            Size crashTxtSize = renderer.MeasureString(":(", crashFont);
             
             /*title*/
             Rectangle crashBounds = new Rectangle(
@@ -1050,8 +1070,9 @@ public class Game {
             renderer.DrawString(":(", crashBounds.X, crashBounds.Y);
 
             /*reason*/
-            renderer.SetFont(new Font("Arial", 12, FontStyle.Regular));
-            Size reasonTxtSize = renderer.MeasureString(reason);
+            Font regFont = new Font("Arial", 12, FontStyle.Regular);
+            renderer.SetFont(regFont);
+            Size reasonTxtSize = renderer.MeasureString(reason, regFont);
             renderer.DrawString(
                 reason,
                 (ctx.Width / 2) - (reasonTxtSize.Width / 2),
@@ -1059,7 +1080,7 @@ public class Game {
 
             /*advice*/
             string advice = "Press any key to exit or press F3 to view report";
-            Size adviceTxtSize = renderer.MeasureString(advice);
+            Size adviceTxtSize = renderer.MeasureString(advice, regFont);
             renderer.DrawString(
                 advice,
                 (ctx.Width / 2) - (adviceTxtSize.Width / 2),
@@ -1129,6 +1150,7 @@ public class Game {
 
     }
     private crashAnimatedBlock[] p_CrashAnimatedBlocks;
+    private IFont p_CrashAnimatedBlockFont;
 
     private void crashAnimateInit() {
         Size windowSize = p_Window.ClientSize;
@@ -1152,9 +1174,10 @@ public class Game {
         };
     }
     private void crashAnimateDraw(IRenderContext ctx, IRenderer renderer) {
-        renderer.SetFont(new Font("Arial", 40));
+        Font blockFont = new Font("Arial", 40, FontStyle.Bold);
+        renderer.SetFont(blockFont);
         string blockStr = ":(";
-        Size strSize = renderer.MeasureString(blockStr);
+        Size strSize = renderer.MeasureString(blockStr, blockFont);
 
         List<crashAnimatedBlock> swapped = new List<crashAnimatedBlock>();
 

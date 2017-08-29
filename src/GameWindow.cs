@@ -35,6 +35,11 @@ public sealed class GameWindow : Form {
         Size = new Size(740, 480);
         ClientSize = new Size(800, 600);
 
+        /*create a wrapper where the rendering will 
+          actually take place. We do this since any device
+          context we create from the window will have the 
+          raster 0,0 set to above the actual client region.*/
+
         /*setup renderer*/
         p_Renderer = RenderFactory.CreateRenderer();
         RecreateContext();
@@ -46,11 +51,19 @@ public sealed class GameWindow : Form {
                  p_Closed = true;
                  return;
         }
+
+        //if it's full screen, take topmost off so the message box would actually show.
+        if (IsFullScreen) { TopMost = false; }
+
         DialogResult res =
             MessageBox.Show("Do you really want to quit the game? Any unsaved progress will be lost.",
                             "Are you sure?",
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation);
+
+        //switch back to topmost if we are in fullscreen
+        if (IsFullScreen) { TopMost = true; }
+
         e.Cancel = (res == DialogResult.No);
         if (!e.Cancel) {
             p_Closed = true;
@@ -81,8 +94,9 @@ public sealed class GameWindow : Form {
         if (p_Context != null) {
             p_Context.Dispose();
         }
+
+        p_Renderer = RenderFactory.CreateRenderer();
         p_Context = RenderFactory.CreateContext(Handle);
-        p_Context.Resize(ClientSize.Width, ClientSize.Height);
     }
 
     public void UnhookCoreEvents() {

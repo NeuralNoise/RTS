@@ -107,14 +107,15 @@ public sealed class UIClickDrag : IUI {
             drawY -= drawH;
         }
 
+
         //draw
-        renderer.SetPen(p_Border);
-        renderer.DrawQuad(
+        renderer.SetBrush(p_Fill);
+        renderer.FillQuad(
             drawX, drawY,
             drawW, drawH);
 
-        renderer.SetBrush(p_Fill);
-        renderer.FillQuad(
+        renderer.SetPen(p_Border);
+        renderer.DrawQuad(
             drawX, drawY,
             drawW, drawH);
     }

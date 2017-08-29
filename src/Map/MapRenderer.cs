@@ -593,7 +593,6 @@ public unsafe class MapRenderer {
         } 
     }
 
-
     public event OnBeginFrameRenderEventHandler BeginRenderFrame;
     public event OnEndFrameRenderEventHandsler EndRenderFrame;
     public event OnBlockRenderEventHandler BlockRender;

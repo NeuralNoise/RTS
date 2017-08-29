@@ -22,11 +22,11 @@ public interface IRenderer {
     void Lock();
     void Unlock();
 
-    void SetTexture(Bitmap bitmap);
+    void SetTexture(ITexture texture);
+    void SetFont(Font font);
     void SetColor(Color color);
     void SetBrush(Brush brush);
     void SetPen(Pen pen);
-    void SetFont(Font font);
 
     void Clear();
 
@@ -43,12 +43,17 @@ public interface IRenderer {
     void FillPath(GraphicsPath path);
 
     void DrawString(string str, int x, int y);
-    Size MeasureString(string str);
+    Size MeasureString(string str, Font font);
 
     void DrawTexture(int x, int y, int w, int h);
     void DrawTextureUnscaled(int x, int y);
 
     IRenderContext Context { get; }
+
+    /// <summary>
+    /// Returns the number of vertices on-screen.
+    /// </summary>
+    int Vertices { get; }
 
     void SetContext(IRenderContext ctx);
 }

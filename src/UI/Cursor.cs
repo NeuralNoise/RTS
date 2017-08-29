@@ -91,16 +91,17 @@ public sealed class UICursor {
 
 
         /*OpenGL ONLY (we can't draw textures yet...)*/
+        renderer.SetBrush(Brushes.White);
         renderer.FillQuad(
             mousePosition.X,
             mousePosition.Y,
             10, 10);
 
 
-        renderer.SetTexture(cursorTestBmp);
+        /*renderer.SetTexture(cursorTestBmp);
         renderer.DrawTextureUnscaled(
             mousePosition.X,
-            mousePosition.Y);
+            mousePosition.Y);*/
         return;
 
         /*draw cursor natively*/
@@ -164,7 +165,6 @@ public sealed class UICursor {
 
     private void handleMouseDown(object sender, MouseEventArgs e) {
         p_CurrentButton |= e.Button;
-
     }
     private void handleMouseUp(object sender, MouseEventArgs e) {
         p_CurrentButton = MouseButtons.None;

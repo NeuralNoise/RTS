@@ -18,6 +18,8 @@ public static unsafe partial class OpenGL {
     public static extern IntPtr LoadLibrary(string lpFileName);
     [DllImport("kernel32.dll")]
     public static extern uint GetLastError();
+    [DllImport("kernel32.dll")]
+    public static extern int MulDiv(int n, int numerator, int denominator);
     #endregion
 
     #region gdi32 imports
@@ -27,7 +29,17 @@ public static unsafe partial class OpenGL {
     public unsafe static extern int SetPixelFormat(IntPtr hDC, int iPixelFormat, PIXELFORMATDESCRIPTOR ppfd);
     [DllImport("gdi32.dll")]
     public static extern int SwapBuffers(IntPtr hDC);
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateFont(int h, int w, int e, int o, FontWeight weight,
+                                           bool italic, bool underline, bool strikeout,
+                                           FontCharSet charset, FontPrecision outPrecision, FontClipPrecision clipPrecision,
+                                           FontQuality quality, FontPitchAndFamily pitchAFam, string face);
 
+    [DllImport("gdi32.dll")]
+    public static extern bool GetCharABCWidths(IntPtr dc, uint firstChar, uint lastChar, [Out] ABC[] lpabc);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool GetTextMetrics(IntPtr dc, out TEXTMETRIC metric);
 
     [DllImport("gdi32.dll", SetLastError = true)]
     public static extern IntPtr CreateDIBSection(
@@ -61,12 +73,46 @@ public static unsafe partial class OpenGL {
     public static extern IntPtr wglGetCurrentContext();
 
     [DllImport("opengl32.dll")]
+    public static extern bool wglUseFontBitmaps(IntPtr hdc, uint first, uint count, uint list);
+
+    [DllImport("opengl32", EntryPoint = "wglUseFontOutlines", CallingConvention = CallingConvention.Winapi)]
+    public static extern bool wglUseFontOutlines(
+    IntPtr hDC,
+    [MarshalAs(UnmanagedType.U4)] UInt32 first,
+    [MarshalAs(UnmanagedType.U4)] UInt32 count,
+    [MarshalAs(UnmanagedType.U4)] UInt32 listBase,
+    [MarshalAs(UnmanagedType.R4)] Single deviation,
+    [MarshalAs(UnmanagedType.R4)] Single extrusion,
+    [MarshalAs(UnmanagedType.I4)] Int32 format,
+    [Out]GLYPHMETRICSFLOAT[] lpgmf);
+
+
+    [DllImport("opengl32.dll")]
+    public static extern bool wglDeleteContext(IntPtr hrc);
+
+    [DllImport("opengl32.dll")]
     public static extern void glOrtho(float left, float right, float bottom, float top, float nearVal, float farVal);
+
+    [DllImport("opengl32.dll")]
+    public static extern void glRasterPos2i(int x, int y);
+    [DllImport("opengl32.dll")]
+    public static extern void glRasterPos2f(float x, float y);
+
+    [DllImport("opengl32.dll")]
+    public static extern void glPushMatrix();
+    [DllImport("opengl32.dll")]
+    public static extern void glPopMatrix();
+
+    [DllImport("opengl32.dll")]
+    public static extern void glWindowPos2iARB(int x, int y);
+
 
     [DllImport("opengl32.dll")]
     public static extern void glClearColor(float red, float green, float blue, float alpha);
     [DllImport("opengl32.dll")]
     public static extern void glEnable(uint cap);
+    [DllImport("opengl32.dll")]
+    public static extern void glBlendFunc(uint sfactor, uint dfactor);
     [DllImport("opengl32.dll")]
     public static extern void glDepthFunc(uint func);
     [DllImport("opengl32.dll")]
@@ -86,7 +132,13 @@ public static unsafe partial class OpenGL {
     [DllImport("opengl32.dll")]
     public static extern void glColor3ub(int r, int g, int b);
     [DllImport("opengl32.dll")]
-    public static extern void glColor4ub(int r, int g, int b, int a); 
+    public static extern void glColor4ub(int r, int g, int b, int a);
+
+    [DllImport("opengl32.dll")]
+    public static extern uint glGenLists(int size);
+
+    [DllImport("opengl32.dll")]
+    public static extern void glLineWidth(float w);
 
     [DllImport("opengl32.dll")]
     public static extern void glVertex2i(int x, int y);
@@ -103,7 +155,9 @@ public static unsafe partial class OpenGL {
     [DllImport("opengl32.dll")]
     public static extern void glScalef(float x, float y, float z);
     [DllImport("opengl32.dll")]
-    public static extern void glCallLists(int n, uint type, int[] lists);
+    public static extern void glDeleteLists(uint list, int range);
+    [DllImport("opengl32.dll")]
+    public static extern void glCallLists(int n, uint type, string lists);
     [DllImport("opengl32.dll")]
     public static extern void glFlush();
     [DllImport("opengl32.dll")]
@@ -120,6 +174,8 @@ public static unsafe partial class OpenGL {
 
     #region	user32 imports
     [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromDC(IntPtr hdc);
+    [DllImport("user32.dll")]
     public static extern IntPtr GetDC(IntPtr hWnd);
     [DllImport("user32.dll")]
     public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
@@ -128,6 +184,8 @@ public static unsafe partial class OpenGL {
     #region glu32 imports
     [DllImport("glu32.dll")]
     public static extern void gluPerspective(double fovy, double aspect, double zNear, double zFar);
+    [DllImport("glu32.dll")]
+    public static extern void gluOrtho2D(double left, double right, double bottom, double top);
     #endregion
 
     #region structs
@@ -214,11 +272,161 @@ public static unsafe partial class OpenGL {
         [FieldOffset(40)]
         public Int32 colors;
     }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    public class LOGFONT {
+        public int lfHeight = 0;
+        public int lfWidth = 0;
+        public int lfEscapement = 0;
+        public int lfOrientation = 0;
+        public int lfWeight = 0;
+        public byte lfItalic = 0;
+        public byte lfUnderline = 0;
+        public byte lfStrikeOut = 0;
+        public byte lfCharSet = 0;
+        public byte lfOutPrecision = 0;
+        public byte lfClipPrecision = 0;
+        public byte lfQuality = 0;
+        public byte lfPitchAndFamily = 0;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string lfFaceName = string.Empty;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ABC {
+        public int  abcA;
+        public uint abcB;
+        public int  abcC;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    public struct TEXTMETRIC {
+        public int tmHeight;
+        public int tmAscent;
+        public int tmDescent;
+        public int tmInternalLeading;
+        public int tmExternalLeading;
+        public int tmAveCharWidth;
+        public int tmMaxCharWidth;
+        public int tmWeight;
+        public int tmOverhang;
+        public int tmDigitizedAspectX;
+        public int tmDigitizedAspectY;
+        public char tmFirstChar;
+        public char tmLastChar;
+        public char tmDefaultChar;
+        public char tmBreakChar;
+        public byte tmItalic;
+        public byte tmUnderlined;
+        public byte tmStruckOut;
+        public byte tmPitchAndFamily;
+        public byte tmCharSet;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GLYPHMETRICSFLOAT {
+        public float gmfBlackBoxX;
+        public float gmfBlackBoxY;
+        public POINTFLOAT gmfptGlyphOrigin;
+        public float gmfCellIncX;
+        public float gmfCellIncY;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINTFLOAT {
+        public float x;
+        public float y;
+    }
     #endregion
 
     #region constants
+
+    public const uint WGL_FONT_POLYGONS = 0x01;
+
+
     public const uint MAJOR_VERSION = 0x821B;
     public const uint MINOR_VERSION = 0x821C;
+
+    public enum FontWeight : int {
+        FW_DONTCARE = 0,
+        FW_THIN = 100,
+        FW_EXTRALIGHT = 200,
+        FW_LIGHT = 300,
+        FW_NORMAL = 400,
+        FW_MEDIUM = 500,
+        FW_SEMIBOLD = 600,
+        FW_BOLD = 700,
+        FW_EXTRABOLD = 800,
+        FW_HEAVY = 900,
+    }
+    public enum FontCharSet : byte {
+        ANSI_CHARSET = 0,
+        DEFAULT_CHARSET = 1,
+        SYMBOL_CHARSET = 2,
+        SHIFTJIS_CHARSET = 128,
+        HANGEUL_CHARSET = 129,
+        HANGUL_CHARSET = 129,
+        GB2312_CHARSET = 134,
+        CHINESEBIG5_CHARSET = 136,
+        OEM_CHARSET = 255,
+        JOHAB_CHARSET = 130,
+        HEBREW_CHARSET = 177,
+        ARABIC_CHARSET = 178,
+        GREEK_CHARSET = 161,
+        TURKISH_CHARSET = 162,
+        VIETNAMESE_CHARSET = 163,
+        THAI_CHARSET = 222,
+        EASTEUROPE_CHARSET = 238,
+        RUSSIAN_CHARSET = 204,
+        MAC_CHARSET = 77,
+        BALTIC_CHARSET = 186,
+    }
+    public enum FontPrecision : byte {
+        OUT_DEFAULT_PRECIS = 0,
+        OUT_STRING_PRECIS = 1,
+        OUT_CHARACTER_PRECIS = 2,
+        OUT_STROKE_PRECIS = 3,
+        OUT_TT_PRECIS = 4,
+        OUT_DEVICE_PRECIS = 5,
+        OUT_RASTER_PRECIS = 6,
+        OUT_TT_ONLY_PRECIS = 7,
+        OUT_OUTLINE_PRECIS = 8,
+        OUT_SCREEN_OUTLINE_PRECIS = 9,
+        OUT_PS_ONLY_PRECIS = 10,
+    }
+    public enum FontClipPrecision : byte {
+        CLIP_DEFAULT_PRECIS = 0,
+        CLIP_CHARACTER_PRECIS = 1,
+        CLIP_STROKE_PRECIS = 2,
+        CLIP_MASK = 0xf,
+        CLIP_LH_ANGLES = (1 << 4),
+        CLIP_TT_ALWAYS = (2 << 4),
+        CLIP_DFA_DISABLE = (4 << 4),
+        CLIP_EMBEDDED = (8 << 4),
+    }
+    public enum FontQuality : byte {
+        DEFAULT_QUALITY = 0,
+        DRAFT_QUALITY = 1,
+        PROOF_QUALITY = 2,
+        NONANTIALIASED_QUALITY = 3,
+        ANTIALIASED_QUALITY = 4,
+        CLEARTYPE_QUALITY = 5,
+        CLEARTYPE_NATURAL_QUALITY = 6,
+    }
+    [Flags]
+    public enum FontPitchAndFamily : byte {
+        DEFAULT_PITCH = 0,
+        FIXED_PITCH = 1,
+        VARIABLE_PITCH = 2,
+        FF_DONTCARE = (0 << 4),
+        FF_ROMAN = (1 << 4),
+        FF_SWISS = (2 << 4),
+        FF_MODERN = (3 << 4),
+        FF_SCRIPT = (4 << 4),
+        FF_DECORATIVE = (5 << 4),
+    }
+
+    
 
     #region PixelFormatDescriptor Flags
 
@@ -550,6 +758,9 @@ public static unsafe partial class OpenGL {
     public const uint DOUBLE = 0x140A;
     #endregion
 
+    #region Blend
+    public const uint SRC_ALPHA = 0x302;
+    public const uint ONE_MINUS_SRC_ALPHA = 0x303;
     #endregion
-
+    #endregion
 }

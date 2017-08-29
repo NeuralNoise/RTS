@@ -7,7 +7,6 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
 using System.Drawing;
 using System.Drawing.Text;
@@ -106,11 +105,12 @@ public class GDIPRenderer : IRenderer {
         Monitor.Exit(p_Mutex);
     }
 
-    public void SetTexture(Bitmap b) { p_Bitmap = b; }
+    public void SetTexture(ITexture texture) { }
+    public void SetFont(Font font) { p_Font = font; }
+
     public void SetBrush(Brush brush) { p_Brush = brush; }
     public void SetPen(Pen pen) { p_Pen = pen; }
     public void SetColor(Color color) { p_Color = color; }
-    public void SetFont(Font font) { p_Font = font; }
 
     public void Clear() {
         p_FrameBuffer.Clear(p_Color);
@@ -168,10 +168,11 @@ public class GDIPRenderer : IRenderer {
             p_Brush,
             x, y);
     }
-    public Size MeasureString(string str) {
+
+    public Size MeasureString(string str, Font font) {
         return TextRenderer.MeasureText(
             str,
-            p_Font);
+            font);
     }
 
     public void DrawTexture(int x, int y, int w, int h) {
@@ -185,7 +186,7 @@ public class GDIPRenderer : IRenderer {
             x, y);
     }
 
-
+    public int Vertices { get { return -1; } }
     public override string ToString() {
         return "GDI+ " + typeof(Graphics).Assembly.ImageRuntimeVersion;
     }

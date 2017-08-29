@@ -24,6 +24,10 @@ public class GDIPRenderContext : IRenderContext, IDeviceContext {
 
     public Graphics Graphics { get { return p_Base; } }
 
+    /*TODO, this is just to get compile when working on OpenGL rendering.*/
+    public ITexture AllocateTexture(Bitmap bmp) { return null; }
+    public IFont AllocateFont(Font fnt) { return null; }
+
     public int Width { get { return p_W; } }
     public int Height { get { return p_H; } }
 

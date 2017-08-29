@@ -10,29 +10,51 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+
 public static class RenderFactory {
 
+    private static string p_Renderer = "opengl";
 
     public static IRenderContext CreateContext(Graphics graphics, Size size) {
-        //return new OpenGL.OpenGLContext(graphics, size);
-        return new GDIPRenderContext(
-            graphics,
-            size);
+        switch (p_Renderer) { 
+            case "opengl":
+                return new OpenGL.OpenGLContext(graphics, size);
+            case "gdip":
+            default:
+                return new GDIPRenderContext(
+                    graphics,
+                    size);
+        }
     }
     public static IRenderContext CreateContext(IntPtr hwnd) { 
         /*just return the GDI+ renderer for now.*/
         Control ctrl = Control.FromHandle(hwnd);
-        return new OpenGL.OpenGLContext(hwnd, ctrl.Size);
-
-        return CreateContext(
-           ctrl.CreateGraphics(),
-           ctrl.ClientSize); 
+        
+        switch(p_Renderer){
+            case "opengl":
+                return new OpenGL.OpenGLContext(hwnd, ctrl.ClientSize);
+            case "gdi+":
+            default:
+                return CreateContext(
+                   ctrl.CreateGraphics(),
+                   ctrl.ClientSize);
+        }
     }
     public static IRenderer CreateRenderer() {
-        return new OpenGL.OpenGLRenderer();
-
-        /*just return the GDI+ renderer for now.*/
-        return new GDIPRenderer();
+        switch(p_Renderer){
+            case "opengl":
+                return new OpenGL.OpenGLRenderer();
+            case "gdip":
+            default:
+                return new GDIPRenderer();
+    }
     }
 
+
+
+    public static void FailSafe() {
+        //fallback on GDI+
+        p_Renderer = "gdip";
+    }
 }

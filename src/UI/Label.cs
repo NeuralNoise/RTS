@@ -15,7 +15,7 @@ using System.Threading;
 public class UILabel : UIControl {
     private string p_Text;
     private Font p_Font;
-    private IRenderer p_SizeRenderer;
+    private IRenderer p_Renderer;
     private Brush p_ForeBrush;
     private TextAlign p_Align;
     private Brush p_ShadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black));
@@ -25,7 +25,7 @@ public class UILabel : UIControl {
 
     public UILabel(Game game) : this("", new Font("Arial", 12, FontStyle.Regular), game) { }
     public UILabel(string text, Font font, Game game) : base(game) {
-        p_SizeRenderer = RenderFactory.CreateRenderer();
+        p_Renderer = game.Window.Renderer;
         p_ForeBrush = Brushes.Black;
         p_Text = text;
         Font = font;
@@ -34,14 +34,19 @@ public class UILabel : UIControl {
     public Font Font {
         get { return p_Font; }
         set {
+            //has the font changed?
+            if (p_Font == value) { return; }
+
             p_Font = value;
-            p_SizeRenderer.SetFont(value);
             invalidate();
         }
     }
     public string Text {
         get { return p_Text; }
         set {
+            //has the text changed?
+            if (p_Text == value) { return; }
+
             p_Text = value;
             invalidate();
         }
@@ -57,17 +62,31 @@ public class UILabel : UIControl {
         }
     }
 
+    private bool p_InvalidateOnNextRender = false;
     private void invalidate() {
-        Size = p_SizeRenderer.MeasureString(p_Text);
+        /*this should only ever fail once when a font has been changed
+         because a font MUST be allocated on the main rendering thread.*/
+        try {
+            Size = p_Renderer.MeasureString(p_Text, p_Font);
+        }
+        catch {
+            p_InvalidateOnNextRender = true;
+            return;
+        }
 
         //update text information
         lock (p_Mutex) {
             p_Lines = p_Text.Split('\n');
         }
+        p_InvalidateOnNextRender = false;
     }
 
     public override void Update() { }
     public override void Draw(IRenderContext context, IRenderer renderer) {
+        if (p_InvalidateOnNextRender) {
+            invalidate();
+        }
+
         Point rLocation = RenderLocation;
         int rX = rLocation.X;
         int rY = rLocation.Y;
@@ -99,7 +118,7 @@ public class UILabel : UIControl {
             string line = lines[c];
 
             //get the render size of the text
-            Size lineSize = p_SizeRenderer.MeasureString(line);
+            Size lineSize = p_Renderer.MeasureString(line, p_Font);
 
             /*calculate x offset based off alignment type*/
             int xOffset = 0;

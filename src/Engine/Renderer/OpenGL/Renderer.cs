@@ -12,10 +12,14 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading;
 
+using System.Runtime.InteropServices;
 public static partial class OpenGL {
-    public class OpenGLRenderer : IRenderer {
+    public unsafe class OpenGLRenderer : IRenderer {
         private OpenGLContext p_Context;
         private object p_Mutex = new object();
+
+        private int p_CurrentVertCount;
+        private int p_TotalVertCount;
 
         public void Lock() { Monitor.Enter(p_Mutex); }
         public void Unlock() { Monitor.Exit(p_Mutex); }
@@ -24,7 +28,7 @@ public static partial class OpenGL {
 
         public void BeginFrame(IRenderContext context) {
             if (!(context is OpenGLContext)) {
-                throw new Exception("Invalid OpenGL context!");
+                throw new Exception("OpenGL: Invalid context!");
             }
 
             p_Context = context as OpenGLContext;
@@ -36,83 +40,266 @@ public static partial class OpenGL {
                     p_Context.RenderContext);
                 p_HasContext = true;
             }
-            glEnable(BLEND);
+
+            //resize?
+            if (p_Context.SizeChanged) {
+                int width = p_Context.Width, height = p_Context.Height;
+                int centerX = width / 2, centerY = height / 2;
+
+                glViewport(0, 0, width, height);
+                glOrtho(-centerX, centerX, -centerY, centerY, -100, 100);
+            }
+
+            //reset tri count
+            p_CurrentVertCount = 0;
+
+            //setup orthoganol matrix so we are using screen coords instead 
+            //of world coords
+            glLoadIdentity();
+            gluOrtho2D(0, p_Context.Width, p_Context.Height, 0);
+            glMatrixMode(MODELVIEW);
+            glPushMatrix();
+            glLoadIdentity();
         }
         public void BeginFrame(IRenderContext context, bool doubleBuffer) {
             BeginFrame(context);
         }
 
         public void SetContext(IRenderContext context) {
-            throw new Exception("Unable");
+            if (!(context is OpenGLContext)) {
+                throw new Exception("OpenGL: Invalid context!");
+            }
+            p_Context = (OpenGLContext)context;
         }
 
         public void EndFrame() {
+            glMatrixMode(PROJECTION);
+            glPopMatrix();
+
+            p_TotalVertCount = p_CurrentVertCount;
+
+           
             SwapBuffers(p_Context.DeviceContext);
         }
 
-        public void SetTexture(Bitmap texture) { }
-        public void SetFont(Font font) { }
+        private OpenGLFont p_Font;
+        public void SetTexture(ITexture texture) { }
+        public void SetFont(Font font) {
+            p_Font = (OpenGLFont)p_Context.AllocateFont(font);
+        }
+
         public void SetPen(Pen pen) { }
         public void SetBrush(Brush brush) {
             if (brush is SolidBrush) {
                 SetColor((brush as SolidBrush).Color);
             }
             else {
-                SetColor(Color.Red);
+                SetColor(Color.Transparent);
             }
         }
         public void SetColor(Color color) {
             glColor4ub(color.R, color.G, color.B, color.A);
         }
 
-        public void Clear() {
-            glBegin(QUADS);
-            glVertex2f(-1f, -1f);
-            glVertex2f(1f, -1f);
-            glVertex2f(1f, 1f);
-            glVertex2f(-1f, 1f);
-            glEnd();
+        public void Clear() {            
+            //just fill a quad the size of the screen.
+            FillQuad(0, 0, p_Context.Width, p_Context.Height);
         }
 
-        public void DrawQuad(int x, int y, int width, int height) { }
-        public void FillQuad(int x, int y, int width, int height) {
-            float xf, yf, wf, hf;
-            PointF l = translate(new Point(x, y));
-            PointF s = translate(new Point(x + width, y + height));
-            xf = l.X; yf = l.Y;
-            wf = s.X; hf = s.Y;
+        public void DrawQuad(int x, int y, int width, int height) {
 
+            glLineWidth(2);
+            glColor3f(1, 1, 1);
+            glBegin(LINES);
 
-            glBegin(QUADS);
-            glVertex2f(xf, yf);
-            glVertex2f(wf, yf);
-            glVertex2f(wf, hf);
-            glVertex2f(xf, hf);
+            /*top*/
+            glVertex2f(x, y);
+            glVertex2f(x + width, y);
+
+            /*right*/
+            glVertex2f(x + width, y);
+            glVertex2f(x + width, y + height);
+
+            /*bottom*/
+            glVertex2f(x + width, y + height);
+            glVertex2f(x, y + height);
+
+            /*left*/
+            glVertex2f(x, y + height);
+            glVertex2f(x, y);
 
             glEnd();
+
+            p_CurrentVertCount += 8;
+        }
+        public void FillQuad(int x, int y, int width, int height) {
+            glBegin(QUADS);
+
+            glVertex2f(x, y);
+            glVertex2f(x + width, y);
+            glVertex2f(x + width, y + height);
+            glVertex2f(x, y + height);
+
+
+            glEnd();
+
+            p_CurrentVertCount += 4;
         }
 
         public void DrawEllipse(int x, int y, int width, int height) { }
         public void FillEllipse(int x, int y, int width, int height) { }
 
-        public void DrawString(string txt, int x, int y) { }
+        public void DrawString(string txt, int x, int y) {
+            if (txt.Length == 0) { return; }
 
-        public Size MeasureString(string str) { return Size.Empty; }
+            //get the font selected.
+            OpenGLFont font = p_Font;
 
-        public void DrawPoly(Point[] p) { }
+            //is there any lines?
+            if (txt.Contains("\n")) { 
+                
+                //recall DrawString per line since OpenGL
+                //bitmap calllists do not support multi-line
+                int currentY = y;
+                string[] lines = txt.Split('\n');
+                int lineLength = lines.Length;
+                for (int c = 0; c < lineLength; c++) {
+
+                    DrawString(
+                        lines[c],
+                        x,
+                        currentY);
+
+                    //move y to the start of the next line
+                    currentY += font.METRIC.tmAscent;
+                }
+
+                return;
+            }
+
+            /*
+                since OpenGL will render the bottom of the text
+                along the y coord we give it, we need to offset
+                it by the font height - the gap between the top
+                of quad and the character.
+            */
+            y += font.METRIC.tmAscent;
+            
+            glRasterPos2f(x, y);
+
+            //jump to the start of the compiled GL list for 
+            //rendering the font bitmaps.
+            glListBase(font.LIST);
+
+            //call it.
+            glCallLists(
+                txt.Length,
+                UNSIGNED_BYTE,
+                txt);
+
+            /*we assume every character is drawn as a textured quad...*/
+            p_CurrentVertCount += (txt.Length << 2); // (*4)
+        }
+        public Size MeasureString(string str, Font f) {
+            //empty?
+            if (String.IsNullOrEmpty(str)) { return Size.Empty; }
+
+            //get the OpenGL font for this font.
+            OpenGLFont font = (OpenGLFont)p_Context.AllocateFont(f);
+
+            //calculate string height from line count
+            string[] lines = str.Split('\n');
+            int lineCount = lines.Length;
+            int maxWidth = 0;
+
+            //find the largest width of all the lines
+            for (int y = 0; y < lineCount; y++) {
+
+                //get the line render width.
+                int lineWidth = 0;
+                fixed (char* line = lines[y].ToCharArray()) {
+                    //empty?
+                    if (line == (char*)0) { continue; }
+
+                    int lineLength = lines[y].Length;
+                    char* ptr = line;
+                    char* ptrEnd = ptr + lineLength;
+
+                    while (ptr != ptrEnd) {
+                        ABC g = font.GLYPHINFO[(int)(*ptr++)];
+                        lineWidth +=
+                            g.abcA +
+                            (int)g.abcB +
+                            g.abcC;
+                    }
+                }
+
+                //largest width so far?
+                if (lineWidth > maxWidth) {
+                    maxWidth = lineWidth;
+                        
+                }
+
+            }
+
+            return new Size(
+                maxWidth,
+                font.METRIC.tmAscent * lineCount);
+        }
+
+        private void quad(int x, int y, int w, int h) {
+            float tX = (float)x;
+            float tY = (float)y;
+            float tW = tX + w;
+            float tH = tY + h;
+
+            transXY(ref tX, ref tY);
+            transXY(ref tW, ref tH);
+
+
+            glBegin(QUADS);
+            glVertex2f(tX, tY);
+            glVertex2f(tW, tY);
+            glVertex2f(tW, tH);
+            glVertex2f(tX, tH);
+            glEnd();
+        }
+        private void transXY(ref float x, ref float y) {
+
+            x = ((x * 1.0f / p_Context.Width) * 2) - 1;
+            y = 1 - ((y * 1.0f / p_Context.Height) * 2);
+
+        }
+
+        public void DrawPoly(Point[] points) {
+
+            glBegin(LINE_LOOP);
+
+            int l = points.Length;
+            for (int c = 0; c < l; c++) { 
+                Point p = points[c];
+                glVertex2f(
+                    (float)p.X,
+                    (float)p.Y);
+            }
+
+            glEnd();
+
+            p_CurrentVertCount += l;
+
+        }
         public void FillPoly(Point[] points) {
-
             glBegin(POLYGON);
 
-            foreach (Point p in points) {
-
-                PointF trans = translate(p);
-
+            int l = points.Length;
+            for (int c = 0; c < l; c++) { 
+                Point p = points[c];
                 glVertex2f(
-                    trans.X,
-                    trans.Y);
-            
+                    p.X,
+                    p.Y);
             }
+
+            p_CurrentVertCount += l;
 
             glEnd();
             return;
@@ -128,20 +315,7 @@ public static partial class OpenGL {
 
 
         public IRenderContext Context { get { return p_Context; } }
-
-
-        private PointF translate(Point p) {
-            float x = 0;
-            float y = 0;
-
-
-            x = ((p.X * 1.0f / p_Context.Width) * 2) - 1;
-            y = 1 - ((p.Y * 1.0f / p_Context.Height) * 2);
-
-
-            return new PointF(x, y);
-        }
-
+        public int Vertices { get { return p_TotalVertCount; } }
 
         public override string ToString() {
             int major, minor;

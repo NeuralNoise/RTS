@@ -11,20 +11,30 @@ using System;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
-
-
 using System.Collections.Generic;
 
 static class Init {
+
+    static int hashFont(Font f) {
+        return
+            f.Name.GetHashCode() +
+            f.Size.GetHashCode() +
+            f.Style.GetHashCode();
+    }
+
     [STAThread]
     static void Main(string[] args) {
+
+        int hash = (2.0f).GetHashCode();
+        int hash2 = (3.0f).GetHashCode();
+
+        Console.WriteLine("Hello World".GetHashCode().ToString("X"));
+
         Application.EnableVisualStyles();
 
-        new System.Threading.Thread(new System.Threading.ThreadStart(delegate{
-            GameWindow wnd = new GameWindow();
-            Game game = new Game(wnd);
-            Application.Run(wnd);
-        }), 1024 * 1024 * 4).Start();
+        GameWindow wnd = new GameWindow();
+        Game game = new Game(wnd);
+        Application.Run(wnd);
 
     }
 }
