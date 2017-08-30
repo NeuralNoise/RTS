@@ -25,7 +25,7 @@ public class GDIPRenderer : IRenderer {
 
     private bool p_InFrame;
 
-    private Bitmap p_Bitmap;
+    private ITexture p_Texture;
     private Brush p_Brush;
     private Pen p_Pen;
     private Color p_Color;
@@ -105,7 +105,12 @@ public class GDIPRenderer : IRenderer {
         Monitor.Exit(p_Mutex);
     }
 
-    public void SetTexture(ITexture texture) { }
+    public void SetTexture(string alias) {
+        SetTexture(p_Context.GetTexture(alias));
+    }
+    public void SetTexture(ITexture texture) {
+        p_Texture = texture;
+    }
     public void SetFont(Font font) { p_Font = font; }
 
     public void SetBrush(Brush brush) { p_Brush = brush; }
@@ -177,12 +182,12 @@ public class GDIPRenderer : IRenderer {
 
     public void DrawTexture(int x, int y, int w, int h) {
         p_FrameBuffer.DrawImage(
-            p_Bitmap,
+            (p_Texture as GDIPTexture).Bitmap,
             x, y, w, h);
     }
     public void DrawTextureUnscaled(int x, int y) {
         p_FrameBuffer.DrawImageUnscaled(
-            p_Bitmap,
+            (p_Texture as GDIPTexture).Bitmap,
             x, y);
     }
 

@@ -283,8 +283,6 @@ public abstract class UIControl : IUI {
     private void fireEvent(Game g, msgType type, object args) {
         mouseArgs mArgs = (args is mouseArgs ? args as mouseArgs : null);
 
-        Console.WriteLine("FIRE " + type);
-
         switch (type) {
             #region KeyUp
             case msgType.KEY_UP:

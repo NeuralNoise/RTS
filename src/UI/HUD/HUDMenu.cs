@@ -17,12 +17,13 @@ public class HUDMenu : UIContainer {
 
     public HUDMenu(Game g) : base(g) {
         for (int c = 0; c < p_Resources.Length; c++) {
-            p_Resources[c] = new UILabel("", new Font("Arial", 12f, FontStyle.Regular), g);
+            p_Resources[c] = new UILabel("", new Font("Arial", 10f, FontStyle.Bold), g);
+            p_Resources[c].ForeBrush = Brushes.White;
             AddControl(p_Resources[c]);
         }
 
         Location = Point.Empty;
-        Height = 18;
+        Height = 20;
 
         BackBrush = Brushes.Gray;
     }
@@ -39,9 +40,10 @@ public class HUDMenu : UIContainer {
         int spacing = 10;
         int currentX = spacing;
         for (int c = 0; c < p_Resources.Length; c++) {
-            p_Resources[c].Location = new Point(
+            UILabel label = p_Resources[c];
+            label.Location = new Point(
                 currentX,
-                0);
+                (int)Math.Floor((Height * 1.0f / 2) - (label.Height * 1.0f / 2)));
             currentX += spacing + p_Resources[c].Width;
         }
 

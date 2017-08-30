@@ -20,7 +20,16 @@ public static partial class OpenGL {
         public ABC[] GLYPHINFO;
         public TEXTMETRIC METRIC;
      
-        public void Dispose() { }
+        public void Dispose() {
+            HASH = 0;
+            HFONT = (IntPtr)0;
+            GLYPHINFO = null;
+            METRIC = default(TEXTMETRIC);
+            glDeleteLists(
+                LIST,
+                256);
+            LIST = 0;
+        }
         public override int GetHashCode() {
             return HASH;
         }

@@ -13,340 +13,7 @@ using System.Runtime.InteropServices;
 
 
 public static unsafe partial class OpenGL {
-    #region kernel32 imports
-    [DllImport("kernel32.dll")]
-    public static extern IntPtr LoadLibrary(string lpFileName);
-    [DllImport("kernel32.dll")]
-    public static extern uint GetLastError();
-    [DllImport("kernel32.dll")]
-    public static extern int MulDiv(int n, int numerator, int denominator);
-    #endregion
-
-    #region gdi32 imports
-    [DllImport("gdi32.dll", SetLastError = true)]
-    public unsafe static extern int ChoosePixelFormat(IntPtr hDC, PIXELFORMATDESCRIPTOR ppfd);
-    [DllImport("gdi32.dll", SetLastError = true)]
-    public unsafe static extern int SetPixelFormat(IntPtr hDC, int iPixelFormat, PIXELFORMATDESCRIPTOR ppfd);
-    [DllImport("gdi32.dll")]
-    public static extern int SwapBuffers(IntPtr hDC);
-    [DllImport("gdi32.dll")]
-    public static extern IntPtr CreateFont(int h, int w, int e, int o, FontWeight weight,
-                                           bool italic, bool underline, bool strikeout,
-                                           FontCharSet charset, FontPrecision outPrecision, FontClipPrecision clipPrecision,
-                                           FontQuality quality, FontPitchAndFamily pitchAFam, string face);
-
-    [DllImport("gdi32.dll")]
-    public static extern bool GetCharABCWidths(IntPtr dc, uint firstChar, uint lastChar, [Out] ABC[] lpabc);
-
-    [DllImport("gdi32.dll")]
-    public static extern bool GetTextMetrics(IntPtr dc, out TEXTMETRIC metric);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    public static extern IntPtr CreateDIBSection(
-        IntPtr hdc,
-        BITMAPINFO pbmi,
-        uint iUsage,
-        out IntPtr ppvBits,
-        IntPtr hSection,
-        uint dwOffset);
-    [DllImport("gdi32.dll")]
-    public static extern bool DeleteObject(IntPtr hObject);
-    [DllImport("gdi32.dll", SetLastError = true)]
-    public static extern IntPtr CreateCompatibleDC(IntPtr hDC);
-    [DllImport("gdi32.dll")]
-    public static extern bool DeleteDC(IntPtr hDC);
-    [DllImport("gdi32.dll")]
-    public static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
-    #endregion
-
-    #region	opengl imports
-    [DllImport("opengl32.dll")]
-    public static extern void glGetIntegerv(uint name, out int value);
-
-    [DllImport("opengl32.dll")]
-    public static extern int wglMakeCurrent(IntPtr hdc, IntPtr hrc);
-    [DllImport("opengl32.dll")]
-    public static extern IntPtr wglCreateContext(IntPtr hdc);
-    [DllImport("opengl32.dll")]
-    public static extern IntPtr wglGetCurrentDC();
-    [DllImport("opengl32.dll")]
-    public static extern IntPtr wglGetCurrentContext();
-
-    [DllImport("opengl32.dll")]
-    public static extern bool wglUseFontBitmaps(IntPtr hdc, uint first, uint count, uint list);
-
-    [DllImport("opengl32", EntryPoint = "wglUseFontOutlines", CallingConvention = CallingConvention.Winapi)]
-    public static extern bool wglUseFontOutlines(
-    IntPtr hDC,
-    [MarshalAs(UnmanagedType.U4)] UInt32 first,
-    [MarshalAs(UnmanagedType.U4)] UInt32 count,
-    [MarshalAs(UnmanagedType.U4)] UInt32 listBase,
-    [MarshalAs(UnmanagedType.R4)] Single deviation,
-    [MarshalAs(UnmanagedType.R4)] Single extrusion,
-    [MarshalAs(UnmanagedType.I4)] Int32 format,
-    [Out]GLYPHMETRICSFLOAT[] lpgmf);
-
-
-    [DllImport("opengl32.dll")]
-    public static extern bool wglDeleteContext(IntPtr hrc);
-
-    [DllImport("opengl32.dll")]
-    public static extern void glOrtho(float left, float right, float bottom, float top, float nearVal, float farVal);
-
-    [DllImport("opengl32.dll")]
-    public static extern void glRasterPos2i(int x, int y);
-    [DllImport("opengl32.dll")]
-    public static extern void glRasterPos2f(float x, float y);
-
-    [DllImport("opengl32.dll")]
-    public static extern void glPushMatrix();
-    [DllImport("opengl32.dll")]
-    public static extern void glPopMatrix();
-
-    [DllImport("opengl32.dll")]
-    public static extern void glWindowPos2iARB(int x, int y);
-
-
-    [DllImport("opengl32.dll")]
-    public static extern void glClearColor(float red, float green, float blue, float alpha);
-    [DllImport("opengl32.dll")]
-    public static extern void glEnable(uint cap);
-    [DllImport("opengl32.dll")]
-    public static extern void glBlendFunc(uint sfactor, uint dfactor);
-    [DllImport("opengl32.dll")]
-    public static extern void glDepthFunc(uint func);
-    [DllImport("opengl32.dll")]
-    public static extern void glClear(uint mask);
-    [DllImport("opengl32.dll")]
-    public static extern void glLoadIdentity();
-    [DllImport("opengl32.dll")]
-    public static extern void glTranslatef(float x, float y, float z);
-    [DllImport("opengl32.dll")]
-    public static extern void glRotatef(float angle, float x, float y, float z);
-    [DllImport("opengl32.dll")]
-    public static extern void glBegin(uint mode);
-    [DllImport("opengl32.dll")]
-    public static extern void glMatrixMode(uint mode);
-    [DllImport("opengl32.dll")]
-    public static extern void glColor3f(float red, float green, float blue);
-    [DllImport("opengl32.dll")]
-    public static extern void glColor3ub(int r, int g, int b);
-    [DllImport("opengl32.dll")]
-    public static extern void glColor4ub(int r, int g, int b, int a);
-
-    [DllImport("opengl32.dll")]
-    public static extern uint glGenLists(int size);
-
-    [DllImport("opengl32.dll")]
-    public static extern void glLineWidth(float w);
-
-    [DllImport("opengl32.dll")]
-    public static extern void glVertex2i(int x, int y);
-    [DllImport("opengl32.dll")]
-    public static extern void glVertex2f(float x, float y);
-    [DllImport("opengl32.dll")]
-    public static extern void glVertex3f(float x, float y, float z);
-    [DllImport("opengl32.dll")]
-    public static extern void glEnd();
-    [DllImport("opengl32.dll")]
-    public static extern void glColor4ub(byte red, byte green, byte blue, byte alpha);
-    [DllImport("opengl32.dll")]
-    public static extern void glListBase(uint base_notkeyword);
-    [DllImport("opengl32.dll")]
-    public static extern void glScalef(float x, float y, float z);
-    [DllImport("opengl32.dll")]
-    public static extern void glDeleteLists(uint list, int range);
-    [DllImport("opengl32.dll")]
-    public static extern void glCallLists(int n, uint type, string lists);
-    [DllImport("opengl32.dll")]
-    public static extern void glFlush();
-    [DllImport("opengl32.dll")]
-    public static extern void glViewport(int x, int y, int width, int height);
-    [DllImport("opengl32.dll")]
-    public static extern void glShadeModel(uint mode);
-    [DllImport("opengl32.dll")]
-    public static extern void glClearDepth(double depth);
-    [DllImport("opengl32.dll")]
-    public static extern void glHint(uint target, uint mode);
-
-
-    #endregion
-
-    #region	user32 imports
-    [DllImport("user32.dll")]
-    private static extern IntPtr WindowFromDC(IntPtr hdc);
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetDC(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-    #endregion
-
-    #region glu32 imports
-    [DllImport("glu32.dll")]
-    public static extern void gluPerspective(double fovy, double aspect, double zNear, double zFar);
-    [DllImport("glu32.dll")]
-    public static extern void gluOrtho2D(double left, double right, double bottom, double top);
-    #endregion
-
-    #region structs
-    [StructLayout(LayoutKind.Explicit)]
-    public struct PIXELFORMATDESCRIPTOR {
-        [FieldOffset(0)]
-        public UInt16 nSize;
-        [FieldOffset(2)]
-        public UInt16 nVersion;
-        [FieldOffset(4)]
-        public UInt32 dwFlags;
-        [FieldOffset(8)]
-        public Byte iPixelType;
-        [FieldOffset(9)]
-        public Byte cColorBits;
-        [FieldOffset(10)]
-        public Byte cRedBits;
-        [FieldOffset(11)]
-        public Byte cRedShift;
-        [FieldOffset(12)]
-        public Byte cGreenBits;
-        [FieldOffset(13)]
-        public Byte cGreenShift;
-        [FieldOffset(14)]
-        public Byte cBlueBits;
-        [FieldOffset(15)]
-        public Byte cBlueShift;
-        [FieldOffset(16)]
-        public Byte cAlphaBits;
-        [FieldOffset(17)]
-        public Byte cAlphaShift;
-        [FieldOffset(18)]
-        public Byte cAccumBits;
-        [FieldOffset(19)]
-        public Byte cAccumRedBits;
-        [FieldOffset(20)]
-        public Byte cAccumGreenBits;
-        [FieldOffset(21)]
-        public Byte cAccumBlueBits;
-        [FieldOffset(22)]
-        public Byte cAccumAlphaBits;
-        [FieldOffset(23)]
-        public Byte cDepthBits;
-        [FieldOffset(24)]
-        public Byte cStencilBits;
-        [FieldOffset(25)]
-        public Byte cAuxBuffers;
-        [FieldOffset(26)]
-        public SByte iLayerType;
-        [FieldOffset(27)]
-        public Byte bReserved;
-        [FieldOffset(28)]
-        public UInt32 dwLayerMask;
-        [FieldOffset(32)]
-        public UInt32 dwVisibleMask;
-        [FieldOffset(36)]
-        public UInt32 dwDamageMask;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    public class BITMAPINFO  {
-        [FieldOffset(0)]
-        public Int32 biSize;
-        [FieldOffset(4)]
-        public Int32 biWidth;
-        [FieldOffset(8)]
-        public Int32 biHeight;
-        [FieldOffset(12)]
-        public Int16 biPlanes;
-        [FieldOffset(14)]
-        public Int16 biBitCount;
-        [FieldOffset(16)]
-        public Int32 biCompression;
-        [FieldOffset(20)]
-        public Int32 biSizeImage;
-        [FieldOffset(24)]
-        public Int32 biXPelsPerMeter;
-        [FieldOffset(28)]
-        public Int32 biYPelsPerMeter;
-        [FieldOffset(32)]
-        public Int32 biClrUsed;
-        [FieldOffset(36)]
-        public Int32 biClrImportant;
-        [FieldOffset(40)]
-        public Int32 colors;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    public class LOGFONT {
-        public int lfHeight = 0;
-        public int lfWidth = 0;
-        public int lfEscapement = 0;
-        public int lfOrientation = 0;
-        public int lfWeight = 0;
-        public byte lfItalic = 0;
-        public byte lfUnderline = 0;
-        public byte lfStrikeOut = 0;
-        public byte lfCharSet = 0;
-        public byte lfOutPrecision = 0;
-        public byte lfClipPrecision = 0;
-        public byte lfQuality = 0;
-        public byte lfPitchAndFamily = 0;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string lfFaceName = string.Empty;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ABC {
-        public int  abcA;
-        public uint abcB;
-        public int  abcC;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    public struct TEXTMETRIC {
-        public int tmHeight;
-        public int tmAscent;
-        public int tmDescent;
-        public int tmInternalLeading;
-        public int tmExternalLeading;
-        public int tmAveCharWidth;
-        public int tmMaxCharWidth;
-        public int tmWeight;
-        public int tmOverhang;
-        public int tmDigitizedAspectX;
-        public int tmDigitizedAspectY;
-        public char tmFirstChar;
-        public char tmLastChar;
-        public char tmDefaultChar;
-        public char tmBreakChar;
-        public byte tmItalic;
-        public byte tmUnderlined;
-        public byte tmStruckOut;
-        public byte tmPitchAndFamily;
-        public byte tmCharSet;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct GLYPHMETRICSFLOAT {
-        public float gmfBlackBoxX;
-        public float gmfBlackBoxY;
-        public POINTFLOAT gmfptGlyphOrigin;
-        public float gmfCellIncX;
-        public float gmfCellIncY;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct POINTFLOAT {
-        public float x;
-        public float y;
-    }
-    #endregion
-
-    #region constants
-
-    public const uint WGL_FONT_POLYGONS = 0x01;
-
-
-    public const uint MAJOR_VERSION = 0x821B;
-    public const uint MINOR_VERSION = 0x821C;
-
+    #region enums
     public enum FontWeight : int {
         FW_DONTCARE = 0,
         FW_THIN = 100,
@@ -425,8 +92,25 @@ public static unsafe partial class OpenGL {
         FF_SCRIPT = (4 << 4),
         FF_DECORATIVE = (5 << 4),
     }
+    #endregion
 
-    
+    public const uint MAJOR_VERSION = 0x821B;
+    public const uint MINOR_VERSION = 0x821C;
+
+
+    public const uint RGBA = 0x1908;
+    public const uint BGRA = 0x80E1;
+
+
+    public const uint TEXTURE_MAG_FILTER = 0x2800;
+    public const uint TEXTURE_MIN_FILTER = 0x2801;
+
+    public const uint TEXTURE_WRAP_S = 0x802;
+    public const uint TEXTURE_WRAP_T = 0x803;
+
+    public const uint LINEAR = 0x2601;
+
+    public const uint REPEAT = 0x2901;
 
     #region PixelFormatDescriptor Flags
 
@@ -761,6 +445,5 @@ public static unsafe partial class OpenGL {
     #region Blend
     public const uint SRC_ALPHA = 0x302;
     public const uint ONE_MINUS_SRC_ALPHA = 0x303;
-    #endregion
     #endregion
 }

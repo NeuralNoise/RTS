@@ -83,7 +83,17 @@ public static partial class OpenGL {
         }
 
         private OpenGLFont p_Font;
-        public void SetTexture(ITexture texture) { }
+        private OpenGLTexture p_Texture;
+        public void SetTexture(string alias) {
+            SetTexture(p_Context.GetTexture(alias));
+        }
+        public void SetTexture(ITexture texture) {
+            //valid?
+            if (!(texture is OpenGLTexture)) {
+                throw new Exception("OpenGL: Invalid texture!");
+            }
+            p_Texture = texture as OpenGLTexture;
+        }
         public void SetFont(Font font) {
             p_Font = (OpenGLFont)p_Context.AllocateFont(font);
         }
@@ -247,30 +257,6 @@ public static partial class OpenGL {
                 font.METRIC.tmAscent * lineCount);
         }
 
-        private void quad(int x, int y, int w, int h) {
-            float tX = (float)x;
-            float tY = (float)y;
-            float tW = tX + w;
-            float tH = tY + h;
-
-            transXY(ref tX, ref tY);
-            transXY(ref tW, ref tH);
-
-
-            glBegin(QUADS);
-            glVertex2f(tX, tY);
-            glVertex2f(tW, tY);
-            glVertex2f(tW, tH);
-            glVertex2f(tX, tH);
-            glEnd();
-        }
-        private void transXY(ref float x, ref float y) {
-
-            x = ((x * 1.0f / p_Context.Width) * 2) - 1;
-            y = 1 - ((y * 1.0f / p_Context.Height) * 2);
-
-        }
-
         public void DrawPoly(Point[] points) {
 
             glBegin(LINE_LOOP);
@@ -310,9 +296,44 @@ public static partial class OpenGL {
         public void DrawPath(GraphicsPath path) { }
         public void FillPath(GraphicsPath path) { }
 
-        public void DrawTexture(int x, int y, int width, int height) { }
-        public void DrawTextureUnscaled(int x, int y) { }
+        public void DrawTexture(int x, int y, int width, int height) {
+            glEnable(TEXTURE_2D);
 
+            glColor3f(1, 1, 1); 
+            glBindTexture(TEXTURE_2D, p_Texture.INDEX);
+
+            /*draw quad for the texture*/
+            glBegin(QUADS);
+
+            glTexCoord2f(0, 0);
+            glVertex2f(x, y);
+
+            glTexCoord2f(1, 0);
+            glVertex2f(x + width, y);
+
+            glTexCoord2f(1, 1);
+            glVertex2f(x + width, y + height);
+
+            glTexCoord2f(0, 1);
+            glVertex2f(x, y + height);
+
+            glEnd();
+
+
+            //clean up
+            glDisable(TEXTURE_2D);
+            p_CurrentVertCount += 4;
+        
+        }
+        public void DrawTextureUnscaled(int x, int y) { 
+            //just call drawtexture with the width/height of the 
+            //assigned texture size.
+            DrawTexture(
+                x, y,
+                p_Texture.Width,
+                p_Texture.Height);
+
+        }
 
         public IRenderContext Context { get { return p_Context; } }
         public int Vertices { get { return p_TotalVertCount; } }

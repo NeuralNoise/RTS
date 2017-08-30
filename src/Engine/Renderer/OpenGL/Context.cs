@@ -9,6 +9,7 @@
 */
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Threading;
 
 public static unsafe partial class OpenGL {
@@ -19,6 +20,7 @@ public static unsafe partial class OpenGL {
         private Version p_Version;
 
         private OpenGLFont[] p_Fonts = new OpenGLFont[0];
+        private OpenGLTexture[] p_Textures = new OpenGLTexture[0];
 
         private object p_Mutex = new object();
 
@@ -51,6 +53,7 @@ public static unsafe partial class OpenGL {
                 iLayerType = PFD_MAIN_PLANE
             };
 
+            
             //attempt to register the pixel format
             int match = ChoosePixelFormat(p_DeviceContext, format);
             if (match == 0) {
@@ -79,18 +82,6 @@ public static unsafe partial class OpenGL {
             wglMakeCurrent(p_DeviceContext, IntPtr.Zero);
         }
 
-        private static IntPtr fromGraphics(Graphics g) { 
-            //get the window handle 
-            IntPtr dc = g.GetHdc();
-            IntPtr hwnd = WindowFromDC(dc);
-
-            if (hwnd == IntPtr.Zero) {
-                throw new Exception("OpenGL: Unable to resolve window handle from Graphics object.");
-            }
-
-            return hwnd;
-        }
-
         public void Resize(int width, int height) {
             p_Width = width;
             p_Height = height;
@@ -99,36 +90,6 @@ public static unsafe partial class OpenGL {
             p_ResizeUpdate = true;
         }
 
-        private int createFontHash(Font font) {
-            //Style = (log2(8) = 3bits
-            //Size =
-
-            /*
-                this function does not need to worry about
-                hash collisions as there is no point in doing
-                so. It is just to check if a font is already
-                being used.
-            */
-
-            //generate a hash for the font name
-            int hash = font.Name.GetHashCode();
-
-            //just add the hash of the font size
-            //to the name hash (in most scenarios,
-            //the difference in either would make
-            //a different hash.
-            hash += font.Size.GetHashCode();
-
-            //cut off all but 1 byte of the hash 
-            //so we can fill in with the font size.
-            hash &= 0x00ffffff;
-
-            //add font style (which is 3 bits to the top end)
-            hash |= ((byte)font.Style << 31);
-            return hash;
-        }
-
-        public ITexture AllocateTexture(Bitmap bmp) { return null; }
         public IFont AllocateFont(Font font) {
             Monitor.Enter(p_Mutex);
 
@@ -187,6 +148,84 @@ public static unsafe partial class OpenGL {
             Monitor.Exit(p_Mutex);
             return buffer;
         }
+        public ITexture AllocateTexture(Bitmap bmp, string alias) {
+            Monitor.Enter(p_Mutex);
+            Size size = bmp.Size;
+
+            //has the texture already been defined?
+            
+            ITexture exist = GetTexture(alias);
+            if (exist != null) {
+                Monitor.Exit(p_Mutex);
+                return exist;
+            }
+
+            //create the texture index
+            int index;
+            glGenTextures(1, out index);
+            glBindTexture(TEXTURE_2D, index);
+            
+            //lock the bitmap so we can access its memory directly
+            BitmapData bmpData = bmp.LockBits(
+                new Rectangle(Point.Empty, size),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format32bppArgb);
+
+            //copy bitmap data to the GPU
+            glTexImage2D(
+                TEXTURE_2D,
+                0,
+                RGBA,
+                size.Width,
+                size.Height,
+                0,
+                RGBA,
+                UNSIGNED_BYTE,
+                bmpData.Scan0);
+
+            //clean up
+            bmp.UnlockBits(bmpData);
+
+
+            glTexParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR);
+            glTexParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
+            glTexParameteri(TEXTURE_2D, TEXTURE_WRAP_S, REPEAT);
+            glTexParameteri(TEXTURE_2D, TEXTURE_WRAP_T, REPEAT);
+
+
+            //add the texture
+            OpenGLTexture buffer = new OpenGLTexture {
+                Width = size.Width,
+                Height = size.Height,
+                INDEX = index,
+                HASH = alias.GetHashCode()
+            };
+
+            Array.Resize(ref p_Textures, p_Textures.Length + 1);
+            p_Textures[p_Textures.Length - 1] = buffer;
+            Monitor.Exit(p_Mutex);
+            return buffer;
+        }
+
+        public ITexture GetTexture(string alias) {
+            //generate a hash for the alias so 
+            //we can compare to other textures quickly
+            int aliasHash = alias.GetHashCode();
+
+            lock (p_Mutex) { 
+                //look for the hash
+                int l = p_Textures.Length;
+                for (int c = 0; c < l; c++) {
+                    OpenGLTexture texture = p_Textures[c];
+                    if (texture.HASH == aliasHash) {
+                        return texture;
+                    }
+                }
+            }
+
+            //not found
+            return null;            
+        }
 
         public int Width { get { return p_Width; } }
         public int Height { get { return  p_Height; } }
@@ -232,5 +271,47 @@ public static unsafe partial class OpenGL {
             
             p_DeviceContext = IntPtr.Zero;
         }
+
+        private static IntPtr fromGraphics(Graphics g) { 
+            //get the window handle 
+            IntPtr dc = g.GetHdc();
+            IntPtr hwnd = WindowFromDC(dc);
+
+            if (hwnd == IntPtr.Zero) {
+                throw new Exception("OpenGL: Unable to resolve window handle from Graphics object.");
+            }
+
+            return hwnd;
+        }
+
+        private int createFontHash(Font font) {
+            //Style = (log2(8) = 3bits
+            //Size =
+
+            /*
+                this function does not need to worry about
+                hash collisions as there is no point in doing
+                so. It is just to check if a font is already
+                being used.
+            */
+
+            //generate a hash for the font name
+            int hash = font.Name.GetHashCode();
+
+            //just add the hash of the font size
+            //to the name hash (in most scenarios,
+            //the difference in either would make
+            //a different hash.
+            hash += font.Size.GetHashCode();
+
+            //cut off all but 1 byte of the hash 
+            //so we can fill in with the font size.
+            hash &= 0x00ffffff;
+
+            //add font style (which is 3 bits to the top end)
+            hash |= ((byte)font.Style << 31);
+            return hash;
+        }
+
     }
 }

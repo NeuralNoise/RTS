@@ -93,12 +93,14 @@ public class UILabel : UIControl {
 
         int shadowSize = 3;
 
+        //set the font
         renderer.SetFont(p_Font);
-        renderer.SetBrush(p_ForeBrush);
 
         /*left align is just render as normal*/
         if (p_Align == TextAlign.Left) {
             drawShadow(renderer, p_Text, rX, rY, shadowSize);
+
+            renderer.SetBrush(p_ForeBrush);
             renderer.DrawString(
                 p_Text,
                 rX, rY);

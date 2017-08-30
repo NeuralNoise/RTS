@@ -8,20 +8,23 @@
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
 using System;
-using System.IO;
 using System.Drawing;
-using System.Windows.Forms;
-using System.Collections.Generic;
 
-static class Init {
+public class GDIPTexture : ITexture {
 
-    [STAThread]
-    static void Main(string[] args) {
-        Application.EnableVisualStyles();
+    private Bitmap p_Bitmap;
 
-        GameWindow wnd = new GameWindow();
-        Game game = new Game(wnd);
-        Application.Run(wnd);
+    public GDIPTexture(Bitmap bmp) {
+        p_Bitmap = bmp;
+    }
 
+    public Bitmap Bitmap { get { return p_Bitmap; } }
+
+    public void Dispose() {
+        try {
+            p_Bitmap.Dispose();
+        }
+        catch { }
+        p_Bitmap = null;
     }
 }

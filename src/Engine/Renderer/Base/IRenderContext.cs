@@ -17,8 +17,10 @@ public interface IRenderContext : IDeviceContext, IDisposable {
 
     void Resize(int w, int h);
 
-    ITexture AllocateTexture(Bitmap bmp);
+    ITexture AllocateTexture(Bitmap bmp, string alias);
     IFont AllocateFont(Font font);
+
+    ITexture GetTexture(string alias);
 
     float DPIX { get; }
     float DPIY { get; }

@@ -21,6 +21,8 @@ public sealed class UICursor {
     private bool p_Enabled;
     private MouseButtons p_CurrentButton;
 
+    private ITexture p_CursorTexture;
+
     public UICursor(Game game) {
         p_Game = game;
         p_Size = new Size(20, 20);
@@ -28,37 +30,43 @@ public sealed class UICursor {
         /*hook into cursor down events so we know what button is being pressed*/
         game.Window.MouseDown += handleMouseDown;
         game.Window.MouseUp += handleMouseUp;
-
-        cursorTest();
     }
 
 
     private Bitmap cursorTestBmp;
-    private void cursorTest() {
-        /*REMOVE*/
-        cursorTestBmp = (Bitmap)Bitmap.FromFile("cursor.png");
+    private Bitmap getCursorBitmap() {
+        Bitmap bmp = (Bitmap)Bitmap.FromFile("cursor.png");
 
-        Bitmap clone = new Bitmap(cursorTestBmp.Width, cursorTestBmp.Height);
+        Bitmap buffer = new Bitmap(bmp.Width, bmp.Height);
 
-        int w = cursorTestBmp.Width, h = cursorTestBmp.Height;
+        /*THIS IS TEMPORARY, I KNOW THIS IS SLOWWWWW BUT 
+          ONCE WE HAVE A SPRITESHEET SYSTEM SETUP, WE WILL
+          USE THAT.*/
+        int w = bmp.Width, h = bmp.Height;
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                Color pxl = cursorTestBmp.GetPixel(x, y);
+                Color pxl = bmp.GetPixel(x, y);
 
                 int data = pxl.ToArgb();
                 data &= 0x00FFFFFF;
 
                 if (data != 0xFF00FF) {
-                    clone.SetPixel(x, y, pxl);
+                    buffer.SetPixel(x, y, pxl);
                 }
 
             }
         }
-        cursorTestBmp = clone;
+        bmp.Dispose();
+        return buffer;
     }
 
     public void Draw(IRenderContext context, IRenderer renderer) {
         if (!p_Enabled) { return; }
+
+        //allocate the cursor
+        if (p_CursorTexture == null) {
+            p_CursorTexture = context.AllocateTexture(getCursorBitmap(), "cursor");
+        }
         
         //get the current mouse position relative to the window
         Point mousePosition = p_Game.PointToClient(Cursor.Position);
@@ -89,19 +97,10 @@ public sealed class UICursor {
             return;
         }
 
-
-        /*OpenGL ONLY (we can't draw textures yet...)*/
-        renderer.SetBrush(Brushes.White);
-        renderer.FillQuad(
-            mousePosition.X,
-            mousePosition.Y,
-            10, 10);
-
-
-        /*renderer.SetTexture(cursorTestBmp);
+        renderer.SetTexture(p_CursorTexture);
         renderer.DrawTextureUnscaled(
             mousePosition.X,
-            mousePosition.Y);*/
+            mousePosition.Y);
         return;
 
         /*draw cursor natively*/
@@ -160,8 +159,6 @@ public sealed class UICursor {
                 break;
         }
     }
-
-
 
     private void handleMouseDown(object sender, MouseEventArgs e) {
         p_CurrentButton |= e.Button;

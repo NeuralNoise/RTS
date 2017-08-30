@@ -13,8 +13,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 
 public interface IRenderer {
-    
-    
     void BeginFrame(IRenderContext context);
     void BeginFrame(IRenderContext context, bool doubleBuffered);
     void EndFrame();
@@ -23,6 +21,8 @@ public interface IRenderer {
     void Unlock();
 
     void SetTexture(ITexture texture);
+    void SetTexture(string alias);
+
     void SetFont(Font font);
     void SetColor(Color color);
     void SetBrush(Brush brush);
@@ -45,7 +45,7 @@ public interface IRenderer {
     void DrawString(string str, int x, int y);
     Size MeasureString(string str, Font font);
 
-    void DrawTexture(int x, int y, int w, int h);
+    void DrawTexture(int x, int y, int width, int height);
     void DrawTextureUnscaled(int x, int y);
 
     IRenderContext Context { get; }

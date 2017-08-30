@@ -7,21 +7,22 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-using System;
-using System.IO;
-using System.Drawing;
-using System.Windows.Forms;
-using System.Collections.Generic;
 
-static class Init {
 
-    [STAThread]
-    static void Main(string[] args) {
-        Application.EnableVisualStyles();
+public static partial class OpenGL {
+    public class OpenGLTexture : ITexture {
+        public int INDEX;
+        public int HASH;
 
-        GameWindow wnd = new GameWindow();
-        Game game = new Game(wnd);
-        Application.Run(wnd);
+        public int Width;
+        public int Height;
 
+        public void Dispose() {
+            glDeleteTextures(1, INDEX);
+            INDEX = 0;
+            HASH = 0;
+            Width = 0;
+            Height = 0;
+        }
     }
 }
