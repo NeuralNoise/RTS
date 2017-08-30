@@ -9,12 +9,17 @@
 */
 using System;
 using System.IO;
+using System.Diagnostics;
 
 public static partial class Globals {
     public static readonly int BUILD;
 
 
     static Globals() {
+        //detect if the we are debugging (just look for VSHost)
+        Process ps = Process.GetCurrentProcess();
+        bool isDebug = ps.ProcessName.ToLower().EndsWith(".vshost");
+        
         /*attempt to read build file*/
         int buffer = 60; /*based off known builds at the time of writing this.*/
 
@@ -24,8 +29,10 @@ public static partial class Globals {
         }
 
         //incriment and save new build
-        buffer++;
-        File.WriteAllText(buildFilename, buffer.ToString());
+        if (isDebug) {
+            buffer++;
+            File.WriteAllText(buildFilename, buffer.ToString());
+        }
 
         BUILD = buffer;
     }

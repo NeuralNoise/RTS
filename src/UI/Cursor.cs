@@ -31,8 +31,7 @@ public sealed class UICursor {
         game.Window.MouseDown += handleMouseDown;
         game.Window.MouseUp += handleMouseUp;
     }
-
-
+    
     private Bitmap cursorTestBmp;
     private Bitmap getCursorBitmap() {
         Bitmap bmp = (Bitmap)Bitmap.FromFile("cursor.png");
@@ -115,6 +114,25 @@ public sealed class UICursor {
         if (p_CurrentArrow == direction) { return; }
 
         p_CurrentArrow = direction;
+
+        const Direction ALL = Direction.NORTH_WEST | Direction.SOUTH_EAST;
+        const Direction NS = Direction.NORTH | Direction.SOUTH;
+        const Direction WE = Direction.WEST | Direction.EAST;
+
+        /*all directions*/
+        if (direction == ALL) {
+            p_CurrentArrow = Direction.NONE;
+            return;
+        }
+
+        /*if north/south or west/east are together, cancel them out.*/
+        if ((direction & NS) == NS) {
+            direction -= NS;
+        }
+        if ((direction & WE) == WE) {
+            direction -= WE;
+        }
+
         /*initialize polygon (it will always be 3)*/
         p_Polygon = new PointF[3];
 

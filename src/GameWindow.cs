@@ -32,13 +32,13 @@ public sealed class GameWindow : Form {
         StartPosition = FormStartPosition.CenterScreen;
         //FormBorderStyle = FormBorderStyle.FixedSingle;
 
-        Size = new Size(740, 480);
-        ClientSize = new Size(800, 600);
+        /*set the client size by default to 80% of screen size*/
+        Screen screen = Screen.FromPoint(Cursor.Position);
+        Size screenSize = screen.Bounds.Size;
+        ClientSize = new Size(
+            (int)(screenSize.Width * 0.8f),
+            (int)(screenSize.Height * 0.8f));
 
-        /*create a wrapper where the rendering will 
-          actually take place. We do this since any device
-          context we create from the window will have the 
-          raster 0,0 set to above the actual client region.*/
 
         /*setup renderer*/
         p_Renderer = RenderFactory.CreateRenderer();

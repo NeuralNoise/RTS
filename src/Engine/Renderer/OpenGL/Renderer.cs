@@ -120,36 +120,35 @@ public static partial class OpenGL {
 
             glLineWidth(2);
             glColor3f(1, 1, 1);
-            glBegin(LINES);
 
-            /*top*/
-            glVertex2f(x, y);
-            glVertex2f(x + width, y);
+            glBegin(LINES); {
+                /*top*/
+                glVertex2f(x, y);
+                glVertex2f(x + width, y);
 
-            /*right*/
-            glVertex2f(x + width, y);
-            glVertex2f(x + width, y + height);
+                /*right*/
+                glVertex2f(x + width, y);
+                glVertex2f(x + width, y + height);
 
-            /*bottom*/
-            glVertex2f(x + width, y + height);
-            glVertex2f(x, y + height);
+                /*bottom*/
+                glVertex2f(x + width, y + height);
+                glVertex2f(x, y + height);
 
-            /*left*/
-            glVertex2f(x, y + height);
-            glVertex2f(x, y);
-
+                /*left*/
+                glVertex2f(x, y + height);
+                glVertex2f(x, y);
+            }
             glEnd();
 
             p_CurrentVertCount += 8;
         }
         public void FillQuad(int x, int y, int width, int height) {
-            glBegin(QUADS);
-
-            glVertex2f(x, y);
-            glVertex2f(x + width, y);
-            glVertex2f(x + width, y + height);
-            glVertex2f(x, y + height);
-
+            glBegin(QUADS); {
+                glVertex2f(x, y);
+                glVertex2f(x + width, y);
+                glVertex2f(x + width, y + height);
+                glVertex2f(x, y + height);
+            }
 
             glEnd();
 
@@ -174,7 +173,6 @@ public static partial class OpenGL {
                 string[] lines = txt.Split('\n');
                 int lineLength = lines.Length;
                 for (int c = 0; c < lineLength; c++) {
-
                     DrawString(
                         lines[c],
                         x,
@@ -258,39 +256,34 @@ public static partial class OpenGL {
         }
 
         public void DrawPoly(Point[] points) {
-
-            glBegin(LINE_LOOP);
-
             int l = points.Length;
-            for (int c = 0; c < l; c++) { 
-                Point p = points[c];
-                glVertex2f(
-                    (float)p.X,
-                    (float)p.Y);
+            glBegin(LINE_LOOP); {                
+                for (int c = 0; c < l; c++) {
+                    Point p = points[c];
+                    glVertex2f(
+                        (float)p.X,
+                        (float)p.Y);
+                }
             }
-
             glEnd();
 
             p_CurrentVertCount += l;
 
         }
         public void FillPoly(Point[] points) {
-            glBegin(POLYGON);
-
             int l = points.Length;
-            for (int c = 0; c < l; c++) { 
-                Point p = points[c];
-                glVertex2f(
-                    p.X,
-                    p.Y);
+
+            glBegin(POLYGON); {
+                for (int c = 0; c < l; c++) {
+                    Point p = points[c];
+                    glVertex2f(
+                        p.X,
+                        p.Y);
+                }
             }
+            glEnd();
 
             p_CurrentVertCount += l;
-
-            glEnd();
-            return;
-
-        
         }
 
         public void DrawPath(GraphicsPath path) { }
@@ -299,31 +292,30 @@ public static partial class OpenGL {
         public void DrawTexture(int x, int y, int width, int height) {
             glEnable(TEXTURE_2D);
 
-            glColor3f(1, 1, 1); 
+            glColor3f(1, 1, 1);
             glBindTexture(TEXTURE_2D, p_Texture.INDEX);
 
             /*draw quad for the texture*/
-            glBegin(QUADS);
+            glBegin(QUADS); {
+                glTexCoord2f(0, 0);
+                glVertex2f(x, y);
 
-            glTexCoord2f(0, 0);
-            glVertex2f(x, y);
+                glTexCoord2f(1, 0);
+                glVertex2f(x + width, y);
 
-            glTexCoord2f(1, 0);
-            glVertex2f(x + width, y);
+                glTexCoord2f(1, 1);
+                glVertex2f(x + width, y + height);
 
-            glTexCoord2f(1, 1);
-            glVertex2f(x + width, y + height);
-
-            glTexCoord2f(0, 1);
-            glVertex2f(x, y + height);
-
+                glTexCoord2f(0, 1);
+                glVertex2f(x, y + height);
+            }
             glEnd();
 
 
             //clean up
             glDisable(TEXTURE_2D);
             p_CurrentVertCount += 4;
-        
+
         }
         public void DrawTextureUnscaled(int x, int y) { 
             //just call drawtexture with the width/height of the 
