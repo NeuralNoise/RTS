@@ -1,4 +1,4 @@
 # RTS Game
-A real time strategy game (name to be chosen) written in C#. 
+A real time strategy game (name to be chosen) written in C# using OpenGL or GDI+. 
 
-At this moment in time, the engine uses .Net2.0 GDI+ as a renderer. However, the structure of the engine renderer allows for other graphics libraries to be used in the future (i.e OpenGL).
+![Latest screenshot](https://raw.githubusercontent.com/tomwilsoncoder/rts/master/latest_screenshot.png)
