@@ -7,32 +7,31 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using System.Threading;
 
 public sealed class UICursor {
+    private bool p_Enabled = false;
+    private bool p_PanEnabled = true;
     private Game p_Game;
-    private PointF[] p_Polygon;
     private Size p_Size;
     private Direction p_CurrentArrow;
-    private bool p_Enabled;
     private MouseButtons p_CurrentButton;
+    private PointF[][] p_Polygon;
+    
+    private object p_Mutex = new object();
+
 
     private ITexture p_CursorTexture;
 
     public UICursor(Game game) {
         p_Game = game;
         p_Size = new Size(20, 20);
-
-        /*hook into cursor down events so we know what button is being pressed*/
-        game.Window.MouseDown += handleMouseDown;
-        game.Window.MouseUp += handleMouseUp;
     }
     
-    private Bitmap cursorTestBmp;
     private Bitmap getCursorBitmap() {
         Bitmap bmp = (Bitmap)Bitmap.FromFile("cursor.png");
 
@@ -61,6 +60,7 @@ public sealed class UICursor {
 
     public void Draw(IRenderContext context, IRenderer renderer) {
         if (!p_Enabled) { return; }
+        Monitor.Enter(p_Mutex);
 
         //allocate the cursor
         if (p_CursorTexture == null) {
@@ -72,27 +72,34 @@ public sealed class UICursor {
 
         /*draw arrow?*/
         if (p_CurrentArrow != Direction.NONE) {
-            Matrix transform = new Matrix();
-            transform.Translate(
-                (float)mousePosition.X,
-                (float)mousePosition.Y);
-            transform.Scale((float)p_Size.Width, (float)p_Size.Height);
+            int mouseX = mousePosition.X;
+            int mouseY = mousePosition.Y;
+            int width = p_Size.Width;
+            int height = p_Size.Height;
 
-            GraphicsPath path = new GraphicsPath();
-            path.AddPolygon(p_Polygon);
-            path.Transform(transform);
-
+            //white polygon
             renderer.SetBrush(Brushes.White);
-            //renderer.FillPath(path);
 
-            PointF[] p = path.PathPoints;
-            Point[] pt = new Point[p.Length];
-            for (int c = 0; c < p.Length; c++) {
-                pt[c] = new Point(
-                    (int)p[c].X,
-                    (int)p[c].Y);
+            /*draw all polygons for the arrow on screen and translate
+              position and scale*/
+            int polyLength = p_Polygon.Length;
+            for (int y = 0; y < polyLength; y++) {
+                PointF[] scale = p_Polygon[y];
+                int pointLength = scale.Length;
+                Point[] points = new Point[pointLength];
+
+                for (int x = 0; x < pointLength; x++) {
+                    PointF p = scale[x];
+                    points[x] = new Point(
+                        (int)(p.X * width) + mouseX,
+                        (int)(p.Y * height) + mouseY);
+                }
+
+                //draw poly
+                renderer.FillPoly(points);
             }
-            renderer.FillPoly(pt);
+
+            Monitor.Exit(p_Mutex);
             return;
         }
 
@@ -100,30 +107,59 @@ public sealed class UICursor {
         renderer.DrawTextureUnscaled(
             mousePosition.X,
             mousePosition.Y);
-        return;
-
-        /*draw cursor natively*/
-        p_Game.Window.Cursor.Draw(
-            (renderer as GDIPRenderer).FrameBuffer,
-            new Rectangle(
-                mousePosition,
-                Cursor.Current.Size));
+        Monitor.Exit(p_Mutex);
     }
 
     public void SetArrow(Direction direction) {
         if (p_CurrentArrow == direction) { return; }
+        Monitor.Enter(p_Mutex);
 
         p_CurrentArrow = direction;
 
-        const Direction ALL = Direction.NORTH_WEST | Direction.SOUTH_EAST;
         const Direction NS = Direction.NORTH | Direction.SOUTH;
         const Direction WE = Direction.WEST | Direction.EAST;
 
-        /*all directions*/
-        if (direction == ALL) {
-            p_CurrentArrow = Direction.NONE;
+        #region all directions
+        if (direction == Direction.ALL) {
+            const float radius = 1.2f;
+            const float radiusHalf = radius / 2;
+            const float size = radiusHalf;
+
+            /*4 arrows, 3 points per arrow*/
+            p_Polygon = new PointF[4][];
+            PointF[] top = p_Polygon[0] = new PointF[3];
+            PointF[] bottom = p_Polygon[1] = new PointF[3];
+            PointF[] left = p_Polygon[2] = new PointF[3];
+            PointF[] right = p_Polygon[3] = new PointF[3];
+
+            #region top
+            top[0] = new PointF(-radiusHalf, -radius);
+            top[1] = new PointF(radiusHalf, -radius);
+            top[2] = new PointF(0, -radius - size);
+            #endregion
+
+            #region bottom
+            bottom[0] = new PointF(-radiusHalf, radius);
+            bottom[1] = new PointF(radiusHalf, radius);
+            bottom[2] = new PointF(0, radius + size);
+            #endregion
+
+            #region left
+            left[0] = new PointF(-radius, -radiusHalf);
+            left[1] = new PointF(-radius, radiusHalf);
+            left[2] = new PointF(-radius - size, 0);
+            #endregion
+
+            #region right
+            right[0] = new PointF(radius, -radiusHalf);
+            right[1] = new PointF(radius, radiusHalf);
+            right[2] = new PointF(radius + size, 0);
+            #endregion
+
+            Monitor.Exit(p_Mutex);
             return;
         }
+        #endregion
 
         /*if north/south or west/east are together, cancel them out.*/
         if ((direction & NS) == NS) {
@@ -133,59 +169,63 @@ public sealed class UICursor {
             direction -= WE;
         }
 
-        /*initialize polygon (it will always be 3)*/
-        p_Polygon = new PointF[3];
-
+        /*we are initializing just a normal arrow, so create 
+          just one poly to be rendered*/
+        p_Polygon = new PointF[1][];
+        p_Polygon[0] = new PointF[3];
+        PointF[] poly = p_Polygon[0];
         switch (direction) {
             #region North
             case Direction.NORTH:
-                p_Polygon[1] = new PointF(-0.7f, 0.7f);
-                p_Polygon[2] = new PointF(0.7f, 0.7f);
+                poly[1] = new PointF(-0.7f, 0.7f);
+                poly[2] = new PointF(0.7f, 0.7f);
                 break;
             case Direction.NORTH_WEST:
-                p_Polygon[1] = new PointF(1, 0);
-                p_Polygon[2] = new PointF(0, 1);
+                poly[1] = new PointF(1, 0);
+                poly[2] = new PointF(0, 1);
                 break;
             case Direction.NORTH_EAST:
-                p_Polygon[1] = new PointF(-1, 0);
-                p_Polygon[2] = new PointF(0, 1);
+                poly[1] = new PointF(-1, 0);
+                poly[2] = new PointF(0, 1);
                 break;
             #endregion
 
             #region South
             case Direction.SOUTH:
-                p_Polygon[1] = new PointF(-0.7f, -0.7f);
-                p_Polygon[2] = new PointF(0.7f, -0.7f);
+                poly[1] = new PointF(-0.7f, -0.7f);
+                poly[2] = new PointF(0.7f, -0.7f);
                 break;
             case Direction.SOUTH_WEST:
-                p_Polygon[1] = new PointF(0, -1);
-                p_Polygon[2] = new PointF(1, 0);
+                poly[1] = new PointF(0, -1);
+                poly[2] = new PointF(1, 0);
                 break;
             case Direction.SOUTH_EAST:
-                p_Polygon[1] = new PointF(-1, 0);
-                p_Polygon[2] = new PointF(0, -1);
+                poly[1] = new PointF(-1, 0);
+                poly[2] = new PointF(0, -1);
                 break;
             #endregion
 
             case Direction.WEST:
-                p_Polygon[1] = new PointF(0.70f, -0.70f);
-                p_Polygon[2] = new PointF(0.70f, 0.70f);
+                poly[1] = new PointF(0.70f, -0.70f);
+                poly[2] = new PointF(0.70f, 0.70f);
                 break;
             case Direction.EAST:
-                p_Polygon[1] = new PointF(-0.7f, -0.7f);
-                p_Polygon[2] = new PointF(-0.7f, 0.7f);
+                poly[1] = new PointF(-0.7f, -0.7f);
+                poly[2] = new PointF(-0.7f, 0.7f);
                 break;
         }
+
+
+        //clean up
+        Monitor.Exit(p_Mutex);
     }
 
     private void handleMouseDown(object sender, MouseEventArgs e) {
         p_CurrentButton |= e.Button;
     }
     private void handleMouseUp(object sender, MouseEventArgs e) {
-        p_CurrentButton = MouseButtons.None;
+        p_CurrentButton -= e.Button;
     }
-
-
 
     public Size Size {
         get { return p_Size; }
@@ -212,5 +252,20 @@ public sealed class UICursor {
         }));
 
         p_Enabled = false;
+    }
+
+
+    public void HookEvents() {
+        /*hook into cursor down events so we know what button is being pressed*/
+        Game game = p_Game;
+        GameWindow window = game.Window;
+        window.MouseDown += handleMouseDown;
+        window.MouseUp += handleMouseUp;
+    }
+    public void UnhookEvents() {
+        Game game = p_Game;
+        GameWindow window = game.Window;
+        window.MouseDown -= handleMouseDown;
+        window.MouseUp -= handleMouseUp;
     }
 }

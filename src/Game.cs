@@ -22,7 +22,7 @@ public class Game {
     private Camera p_Camera;
     private Map p_Map;
     private MapRenderer p_MapRenderer;
-    
+
     public Game(GameWindow wnd) {
         p_Window = wnd;
        
@@ -57,14 +57,15 @@ public class Game {
         p_MapRenderer = new MapRenderer(this, p_Map, p_Camera);
 
         /*init sub-systems*/
+        initUI();
         initMouse();
         initPlayers();
         initLogic();
-        initUI();
         initDebug();
         initDraw();
 
         /*hook events*/
+        p_Cursor.HookEvents();
         wnd.Click += handleMouseClick;
         wnd.MouseWheel += handleMouseScroll;
         wnd.MouseMove += handleMouseMove;
@@ -391,13 +392,16 @@ public class Game {
             the faster the fps, the less of a step
          */
         int stepX, stepY;
-        stepX = stepY = 15;
+        stepX = stepY = 20;
 
         //stepX = 25 - (int)(p_RenderHeartbeat.Rate / 60 * 10);
         //stepY = stepX;
 
         /*update cursor*/
-        p_Cursor.SetArrow(translateArrowDirection(p_ArrowKeyDown));
+        Direction arrowDirection = translateArrowDirection(p_ArrowKeyDown);
+        if (arrowDirection != Direction.ALL) {
+            p_Cursor.SetArrow(arrowDirection);
+        }
 
         /*based off the arrow key flags, adjust the camera
             accordingly.*/
@@ -454,14 +458,21 @@ public class Game {
     #region Mouse
     private UIClickDrag p_ClickDrag;
     private UICursor p_Cursor;
+    private UIPan p_Pan;
 
     private bool p_MouseDown = false;
 
     private void initMouse() {
         p_Cursor = new UICursor(this);
         p_Cursor.Enable();
+
+        p_Pan = new UIPan(this, p_Cursor);
+        addUI(p_Pan);
     }
     private void updateMouse() {
+        //pan active?
+        if (p_Pan.Enabled) { return; }
+
         if (
             //control hijacked?
             p_EventHijacker != null ||
@@ -540,7 +551,7 @@ public class Game {
          Native MouseDown event does not have this behavior*/
         if (e.Button != MouseButtons.None) {
             handleMouseDown(sender, e);
-            return;
+            //return;
         }
 
         //fire mousemove for all ui elements
@@ -596,10 +607,15 @@ public class Game {
             p_EventHijacker.OnMouseScroll(this, mousePosition, e);
         }
 
+        //only scroll if no button is currently down
+        if (p_Cursor.MouseButton != MouseButtons.None) {
+            return;
+        }
+        
         //get the block where the mouse is currently at
         bool hasBlock;
         VisibleBlock block = p_MapRenderer.TryGetBlockAtPoint(p_Window.Context, mousePosition, out hasBlock);
-       
+      
         //adjust zoom
         int v = (e.Delta < 0 ? -1 : 1);
         p_Camera.Scale(v * 10);
@@ -950,7 +966,6 @@ public class Game {
     
     }
 
-
     public Point PointToClient(Point p) {
         return new Point(
             p.X - p_Window.MouseOffsetX,
@@ -1001,6 +1016,7 @@ public class Game {
         p_Window.Resize -= handleResize;
         p_Window.GotFocus -= handleFocusChanged;
         p_Window.LostFocus -= handleFocusChanged;
+        p_Cursor.UnhookEvents();
 
         //save
         string filename;

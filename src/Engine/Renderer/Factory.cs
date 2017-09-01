@@ -51,8 +51,6 @@ public static class RenderFactory {
     }
     }
 
-
-
     public static void FailSafe() {
         //fallback on GDI+
         p_Renderer = "gdip";

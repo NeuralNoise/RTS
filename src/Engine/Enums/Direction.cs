@@ -24,5 +24,7 @@ public enum Direction : byte {
     NORTH_EAST = NORTH | EAST,
 
     SOUTH_WEST = SOUTH | WEST,
-    SOUTH_EAST = SOUTH | EAST
+    SOUTH_EAST = SOUTH | EAST,
+
+    ALL = NORTH_WEST | SOUTH_EAST
 }

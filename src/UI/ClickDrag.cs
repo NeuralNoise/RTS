@@ -83,7 +83,9 @@ public sealed class UIClickDrag : IUI {
     }
     public void OnMouseScroll(Game game, Point mousePosition, MouseEventArgs e) { }
 
-    public void OnKeyDown(Game game, KeyEventArgs e) { }
+    public void OnKeyDown(Game game, KeyEventArgs e) {
+        Disable();
+    }
     public void OnKeyUp(Game game, KeyEventArgs e) { }
 
     public void Draw(IRenderContext context, IRenderer renderer) {
