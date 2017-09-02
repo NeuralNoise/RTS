@@ -111,7 +111,10 @@ public class GDIPRenderer : IRenderer {
     public void SetTexture(ITexture texture) {
         p_Texture = texture;
     }
-    public void SetFont(Font font) { p_Font = font; }
+    public IFont SetFont(Font font) { 
+        p_Font = font;
+        return new GDIPFont(font);
+    }
 
     public void SetBrush(Brush brush) { p_Brush = brush; }
     public void SetPen(Pen pen) { p_Pen = pen; }
@@ -174,10 +177,18 @@ public class GDIPRenderer : IRenderer {
             x, y);
     }
 
-    public Size MeasureString(string str, Font font) {
+    public Size MeasureString(string str, IFont font) {
         return TextRenderer.MeasureText(
             str,
-            font);
+            ((GDIPFont)font).Font);
+    }
+    public int GetCharWidth(char ch, IFont font) { 
+        return MeasureString(
+            ch.ToString(),
+            font).Width;
+    }
+    public int GetFontHeight(IFont font) {
+        return (font as GDIPFont).Font.Height;
     }
 
     public void DrawTexture(int x, int y, int w, int h) {

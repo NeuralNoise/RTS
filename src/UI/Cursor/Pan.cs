@@ -27,7 +27,7 @@ public class UIPan : IUI {
     public void OnMouseDown(Game game, Point mousePosition, MouseEventArgs e) {
         //mouse middle down?
         MouseButtons button = e.Button;
-        if (button != MouseButtons.Right) {
+        if (button != MouseButtons.Middle) {
             if (p_Enabled) { return; }
             Disable();
             return;

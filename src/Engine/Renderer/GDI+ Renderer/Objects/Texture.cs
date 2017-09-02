@@ -10,14 +10,13 @@
 using System;
 using System.Drawing;
 
+/*just a higher deriving font object.*/
+
 public class GDIPTexture : ITexture {
-
     private Bitmap p_Bitmap;
-
     public GDIPTexture(Bitmap bmp) {
         p_Bitmap = bmp;
     }
-
     public Bitmap Bitmap { get { return p_Bitmap; } }
 
     public void Dispose() {

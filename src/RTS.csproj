@@ -104,11 +104,11 @@
     <Compile Include="Engine\Renderer\Base\IRenderer.cs" />
     <Compile Include="Player\Player.cs" />
     <Compile Include="ResourceStockPile.cs" />
-    <Compile Include="UI\ClickDrag.cs" />
+    <Compile Include="UI\Cursor\ClickDrag.cs" />
     <Compile Include="UI\Container.cs" />
     <Compile Include="UI\Base\Control.cs" />
     <Compile Include="UI\Base\IUI.cs" />
-    <Compile Include="UI\Cursor.cs" />
+    <Compile Include="UI\Cursor\Cursor.cs" />
     <Compile Include="UI\Enums\TextAlign.cs" />
     <Compile Include="UI\HUD\HUDMenu.cs" />
     <Compile Include="UI\Label.cs" />
@@ -140,7 +140,8 @@
     <Compile Include="Engine\Enums\Direction.cs" />
     <Compile Include="Engine\Renderer\Base\IFont.cs" />
     <Compile Include="Engine\Renderer\Base\ITexture.cs" />
-    <Compile Include="Engine\Renderer\GDI+ Renderer\Texture.cs" />
+    <Compile Include="Engine\Renderer\GDI+ Renderer\Objects\Font.cs" />
+    <Compile Include="Engine\Renderer\GDI+ Renderer\Objects\Texture.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Context.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Imports\Calls.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Imports\Constants.cs" />
@@ -152,7 +153,11 @@
     <Compile Include="Globals\Build.cs" />
     <Compile Include="Globals\Colors.cs" />
     <Compile Include="Map\Block\VisibleBlock.cs" />
-    <Compile Include="Map\PerlinNoise.cs" />
-    <Compile Include="UI\Pan.cs" />
+    <Compile Include="Map\Generation\TerrainGenerator.cs" />
+    <Compile Include="Map\Generation\PerlinNoise.cs" />
+    <Compile Include="UI\Cursor\Pan.cs" />
+    <Compile Include="UI\Messages.cs">
+    </Compile>
+    <Compile Include="UI\TextBox.cs" />
   </ItemGroup>
 </Project>

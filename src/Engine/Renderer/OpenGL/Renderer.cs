@@ -94,11 +94,15 @@ public static partial class OpenGL {
             }
             p_Texture = texture as OpenGLTexture;
         }
-        public void SetFont(Font font) {
+        public IFont SetFont(Font font) {
             p_Font = (OpenGLFont)p_Context.AllocateFont(font);
+            return p_Font;
         }
 
-        public void SetPen(Pen pen) { }
+        public void SetPen(Pen pen) {
+            glLineWidth(pen.Width);
+            SetColor(pen.Color);
+        }
         public void SetBrush(Brush brush) {
             if (brush is SolidBrush) {
                 SetColor((brush as SolidBrush).Color);
@@ -117,10 +121,6 @@ public static partial class OpenGL {
         }
 
         public void DrawQuad(int x, int y, int width, int height) {
-
-            glLineWidth(2);
-            glColor3f(1, 1, 1);
-
             glBegin(LINES); {
                 /*top*/
                 glVertex2f(x, y);
@@ -208,12 +208,12 @@ public static partial class OpenGL {
             /*we assume every character is drawn as a textured quad...*/
             p_CurrentVertCount += (txt.Length << 2); // (*4)
         }
-        public Size MeasureString(string str, Font f) {
+        public Size MeasureString(string str, IFont f) {
             //empty?
             if (String.IsNullOrEmpty(str)) { return Size.Empty; }
 
             //get the OpenGL font for this font.
-            OpenGLFont font = (OpenGLFont)p_Context.AllocateFont(f);
+            OpenGLFont font = (OpenGLFont)f;
 
             //calculate string height from line count
             string[] lines = str.Split('\n');
@@ -253,6 +253,17 @@ public static partial class OpenGL {
             return new Size(
                 maxWidth,
                 font.METRIC.tmAscent * lineCount);
+        }
+        
+        public int GetFontHeight(IFont font) {
+            return ((OpenGLFont)font).METRIC.tmAscent;
+        }
+        public int GetCharWidth(char ch, IFont font) {
+            OpenGLFont f = (OpenGLFont)font;
+            ABC abc = f.GLYPHINFO[(int)ch];
+            return abc.abcA +
+                   (int)abc.abcB +
+                   abc.abcC;
         }
 
         public void DrawPoly(Point[] points) {

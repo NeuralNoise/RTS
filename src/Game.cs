@@ -108,9 +108,11 @@ public class Game {
             throw new Exception("A UI element already has control over events.");
         }
 
+        Console.WriteLine("HIJACK");
         p_EventHijacker = ui;
     }
     public void DetatchFromEventsHijack(IUI ui) {
+        Console.WriteLine("HIJACK");
         if (ui != p_EventHijacker) {
             throw new Exception("UI element did not hijack events");
         }
@@ -184,6 +186,7 @@ public class Game {
     private UILabel p_DebugLabel;
     private bool p_DebugPrompt = false;
     private bool p_DebugFull = true;
+    private UITextBox p_DebugTextBox;
 
     private void initDebug() {
         p_DebugLabel = (UILabel)addUI(new UILabel(this));
@@ -191,38 +194,43 @@ public class Game {
         p_DebugLabel.ForeBrush = Brushes.White;
         p_DebugLabel.Font = new Font("Arial", 12, FontStyle.Bold);
         p_DebugLabel.Disable();
+
+        p_DebugTextBox = (UITextBox)addUI(new UITextBox(this));
+        p_DebugTextBox.Visible = false;
+        p_DebugTextBox.Text = "";
+        p_DebugTextBox.Font = new Font("Arial", 20, FontStyle.Bold);
+        p_DebugTextBox.Width = 400;
+        p_DebugTextBox.Location = new Point(
+            (p_Window.ClientSize.Width / 2) - (p_DebugTextBox.Width / 2),
+            (p_Window.ClientSize.Height / 2) - (p_DebugTextBox.Height / 2));
+
+        p_DebugTextBox.KeyDown += delegate(Game game, KeyEventArgs e) {            
+            if (e.KeyCode != Keys.Enter) { return; }
+            
+            p_DebugPrompt = false;
+            p_DebugTextBox.Visible = false;
+            p_DebugTextBox.RemoveFocus();
+            try { cmd(p_DebugTextBox.Text); }
+            catch (Exception ex) {
+                if (ex.Message == "Debug crash") {
+                    throw ex;
+                }
+            }
+            return;
+        };
     }
 
     private void debugPrompt() {
         if (p_DebugPrompt) { return; }
 
         p_DebugPrompt = true;
-        TextBox txt = new TextBox();
-        txt.Font = new Font("Arial", 20);
-        txt.Width = 400;
-        txt.Location = new Point(
-            (p_Window.ClientSize.Width / 2) - (txt.Width / 2),
-            (p_Window.ClientSize.Height / 2) - (txt.Height / 2));
-        p_Window.Controls.Add(txt);
-
-        txt.Focus();
-
-        txt.KeyDown += delegate(object sender, KeyEventArgs e) {
-            if (e.KeyCode != Keys.Enter) { return; }
-            TextBox t = sender as TextBox;
-            t.Parent.Controls.Remove(t);
-            p_DebugPrompt = false;
-            try { cmd(t.Text); }
-            catch (Exception ex) {
-                if (ex.Message == "Debug crash") {
-                    throw ex;
-                }
-            }
-
-        };
-    
+        p_DebugTextBox.Text = "";
+        p_DebugTextBox.Visible = true;
+        p_DebugTextBox.Focus();    
     }
     private void cmd(string str) {
+        p_Messages.AddMessage("Player: " + str, Color.White);
+        
         str = str.ToLower();
         string[] txt = str.Split(' ');
         txt = removeBlankStr(txt);
@@ -230,6 +238,10 @@ public class Game {
         switch (txt[0]) { 
             case "crash":
                 throw new Exception("Debug crash");
+
+            case "clear":
+                p_Messages.Clear();
+                break;
 
             case "speed":
                 if (txt[1] == "logic") {
@@ -239,7 +251,6 @@ public class Game {
                     p_RenderHeartbeat.Speed(Convert.ToInt32(txt[2]));
                 }
                 break;
-
 
             case "logic":
                 p_LogicDisabled = txt[1] == "disable";
@@ -532,9 +543,6 @@ public class Game {
         //move camera
         p_Camera.Move(dX, dY);
     }
-    private void disableArrow() { 
-        
-    }
     private void handleMouseMove(object sender, MouseEventArgs e) {
         if (p_LogicDisabled) { return; }
 
@@ -713,8 +721,8 @@ public class Game {
 
     private void handleKeyDown(object sender, KeyEventArgs e) {
         /*update key modifier*/
-        p_CurrentKeys = e.KeyCode;
-        
+        p_CurrentKeys = e.KeyData;
+
         if (p_EventHijacker != null) {
             p_EventHijacker.OnKeyDown(this, e);
             return;
@@ -724,34 +732,32 @@ public class Game {
 
         fogFuck(e.KeyCode);
 
-        /*by doing it this way, a player can press 2 keys to make the
-         player go diagonal.*/
         switch (e.KeyCode) { 
             /*debug*/
             case Keys.Enter:
                 debugPrompt();
-                break;
+                return;
             case Keys.F3:
                 p_DebugLabel.Visible = true;
                 p_DebugLabel.Enable();
                 break;
 
-            /*arrow key pressed?*/
+            /* arrow key pressed?
+               note: by doing it this way, a player can press 2 keys to make the
+               player go diagonal.
+            */
             case Keys.Left:
             case Keys.A:
                 p_ArrowKeyDown |= ArrowKey.LEFT;
                 break;
-
             case Keys.Right:
             case Keys.D:
                 p_ArrowKeyDown |= ArrowKey.RIGHT;
                 break;
-
             case Keys.Up:
             case Keys.W:
                 p_ArrowKeyDown |= ArrowKey.UP;
                 break;
-
             case Keys.Down:
             case Keys.S:
                 p_ArrowKeyDown |= ArrowKey.DOWN;
@@ -881,6 +887,7 @@ public class Game {
     #region UI
     private IUI[] p_UIElements;
     private List<VisibleBlock> p_SelectedBlocks;
+    private UIMessages p_Messages;
 
     private void initUI() {
         p_UIElements = new IUI[0];
@@ -889,6 +896,12 @@ public class Game {
         p_ClickDrag = (UIClickDrag)addUI(
             new UIClickDrag());
         p_ClickDrag.BlocksSelected += uiBlocksSelected;
+
+        /*add messages*/
+        p_Messages = (UIMessages)addUI(
+            new UIMessages(this));
+        p_Messages.Location = new Point(10, 40);
+
 
         addUI(new HUDMenu(this));
     }
@@ -1073,8 +1086,8 @@ public class Game {
             crashAnimateDraw(ctx, renderer);
 
             Font crashFont = new Font("Arial", 70, FontStyle.Bold);
-            renderer.SetFont(crashFont);
-            Size crashTxtSize = renderer.MeasureString(":(", crashFont);
+            IFont font = renderer.SetFont(crashFont);
+            Size crashTxtSize = renderer.MeasureString(":(", font);
             
             /*title*/
             Rectangle crashBounds = new Rectangle(
@@ -1087,8 +1100,8 @@ public class Game {
 
             /*reason*/
             Font regFont = new Font("Arial", 12, FontStyle.Regular);
-            renderer.SetFont(regFont);
-            Size reasonTxtSize = renderer.MeasureString(reason, regFont);
+            font = renderer.SetFont(regFont);
+            Size reasonTxtSize = renderer.MeasureString(reason, font);
             renderer.DrawString(
                 reason,
                 (ctx.Width / 2) - (reasonTxtSize.Width / 2),
@@ -1096,7 +1109,7 @@ public class Game {
 
             /*advice*/
             string advice = "Press any key to exit or press F3 to view report";
-            Size adviceTxtSize = renderer.MeasureString(advice, regFont);
+            Size adviceTxtSize = renderer.MeasureString(advice, font);
             renderer.DrawString(
                 advice,
                 (ctx.Width / 2) - (adviceTxtSize.Width / 2),
@@ -1191,9 +1204,9 @@ public class Game {
     }
     private void crashAnimateDraw(IRenderContext ctx, IRenderer renderer) {
         Font blockFont = new Font("Arial", 40, FontStyle.Bold);
-        renderer.SetFont(blockFont);
+        IFont font = renderer.SetFont(blockFont);
         string blockStr = ":(";
-        Size strSize = renderer.MeasureString(blockStr, blockFont);
+        Size strSize = renderer.MeasureString(blockStr, font);
 
         List<crashAnimatedBlock> swapped = new List<crashAnimatedBlock>();
 

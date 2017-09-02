@@ -127,64 +127,8 @@ public unsafe class Map : IDisposable {
     }
 
     private void generateMap() {
-        //define the noise generators for the terrain/resource
-        Random seed = new Random();
-        PerlinNoise terrainNoise = new PerlinNoise(seed);
-            /*new PerlinNoise(
-            1,
-            .1,
-            1,
-            1,
-            seed.Next(0, int.MaxValue));
-            */
 
-        //use perlin noise to generate terrain (check if
-        //the heighmap for each pixel is within a range for a resource
-        Block* ptr = p_Matrix;
-        Block* ptrEnd = p_Matrix + (p_Width * p_Height);
-        int x = 0, y = 0;
-        while (ptr != ptrEnd) {
-            Block* block = (ptr++);
-
-            //get the heightmap value for this pixel 
-            //within a 1-100 scale
-            double gen = terrainNoise.GetHeight(x, y, 50, 50);
-            int value = (int)(Math.Abs(gen * 100));
-
-            //deturmine the terrain block
-            short blockType = Globals.TERRAIN_GRASS;
-            if (value < 20) {
-                blockType = Globals.TERRAIN_WATER;
-                (*block).Height = (byte)(value * 1.0f * 2);
-            }
-            else if (value < 30) { blockType = Globals.TERRAIN_GRASS; }
-            else if (value > 40) { blockType = Globals.RESOURCE_WOOD; }
-
-            //is the block a grass block? if so, we could place
-            //a resource here.
-            if (blockType == Globals.TERRAIN_GRASS) {
-                (*block).Height = (byte)value;
-                value = seed.Next(0, 100);
-
-                //one in 5 chance it not be a resource?
-                if (seed.Next(0, 5) == 1) {
-                    if (inRange(value, 70, 73)) { blockType = Globals.RESOURCE_GOLD; }
-                    if (inRange(value, 60, 70)) { blockType = Globals.RESOURCE_STONE; }
-                    if (inRange(value, 50, 53)) { blockType = Globals.RESOURCE_FOOD; }
-                }
-            }
-
-
-            //set the block type
-            (*block).TypeID = blockType;
-
-            //update x/y
-            x++;
-            if (x == p_Width) {
-                x = 0;
-                y++;
-            }
-        }
+        MapGenerator.GenerateTerrain(this);
 
     }
     private bool inRange(int value, int start, int end) {
@@ -212,8 +156,6 @@ public unsafe class Map : IDisposable {
 
             (*ptr++) = block.TypeID >= Globals.TERRAIN_END;
         }
-
-
 
         //clean up
         Unlock();

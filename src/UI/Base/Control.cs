@@ -18,6 +18,7 @@ public abstract class UIControl : IUI {
     private bool p_Focus;
     private int p_X, p_Y;
     private int p_W, p_H;
+    private bool p_CanCaptureFocus = true;
 
     private Game p_Game;
 
@@ -41,8 +42,15 @@ public abstract class UIControl : IUI {
     public Size Size {
         get { return new Size(p_W, p_H); }
         set {
-            p_W = value.Width;
-            p_H = value.Height;
+            int width = value.Width;
+            int height = value.Height;
+
+            if (!handleResize(width, height)) {
+                return;
+            }
+
+            p_W = width;
+            p_H = height;
         }
     }
     public Point Location {
@@ -75,16 +83,32 @@ public abstract class UIControl : IUI {
     }
     public int Width {
         get { return p_W; }
-        set { p_W = value; }
+        set {
+
+            if (!handleResize(value, p_H)) {
+                return;
+            }
+
+            p_W = value; 
+
+        }
     }
     public int Height {
         get { return p_H; }
-        set { p_H = value; }
+        set {
+            if (!handleResize(p_W, value)) {
+                return;
+            }
+            p_H = value; 
+        }
     }
 
     public bool Focused { get { return p_Focus; } }
 
     public void Focus() { 
+        //can we focus?
+        if (!p_CanCaptureFocus) { return; }
+
         //unfocus all siblings first
         UIControl[] sibs = Siblings;
         int l = sibs.Length;
@@ -104,7 +128,8 @@ public abstract class UIControl : IUI {
     public void RemoveFocus()  {
         p_Focus = false;
         if (p_Parent == null) {
-            Game.DetatchFromEventsHijack(this);
+            try { Game.DetatchFromEventsHijack(this); }
+            catch { }
         }
     }
 
@@ -330,6 +355,30 @@ public abstract class UIControl : IUI {
 
 
     }
+    private bool handleResize(int newX, int newY) {
+        //is there an event to fire?
+        if (Resize == null) { return true; }
+
+        //has the size actually changed?
+        if (newX == p_W &&
+           newY == p_H) {
+               return false;
+        }
+
+        //fire the event and see if the new size
+        //is accepted.
+        //if not, we return false which cancels the
+        //resize from being applied.
+        bool allowed;
+        Resize(
+            p_Game,
+            Size,
+            new Size(
+                newX,
+                newY),
+            out allowed);
+        return allowed;
+    }
 
     public event OnMouseEventHandler MouseMove;
     public event OnMouseEventHandler MouseUp;
@@ -337,9 +386,12 @@ public abstract class UIControl : IUI {
     public event OnMouseEventHandler MouseScroll;
     public event OnKeyEventHandler KeyUp;
     public event OnKeyEventHandler KeyDown;
+    public event OnResizeEventHandler Resize;
     
+
     public delegate void OnMouseEventHandler(Game game, Point mousePosition, MouseEventArgs args);
     public delegate void OnKeyEventHandler(Game game, KeyEventArgs e);
+    public delegate void OnResizeEventHandler(Game game, Size oldSize, Size newSize, out bool allow);
 
     private enum msgType { 
         NONE =          0,
@@ -356,6 +408,11 @@ public abstract class UIControl : IUI {
         public MouseEventArgs e;
     }
     #endregion
+
+    protected bool CaptureFocusEnabled {
+        get { return p_CanCaptureFocus; }
+        set { p_CanCaptureFocus = value; }
+    }
 
     /*abstract functions for derivers*/
     public abstract void Update();

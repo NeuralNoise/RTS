@@ -24,8 +24,8 @@ public class GDIPRenderContext : IRenderContext, IDeviceContext {
 
     public Graphics Graphics { get { return p_Base; } }
 
-    public IFont AllocateFont(Font fnt) {
-        throw new NotSupportedException();
+    public IFont AllocateFont(Font font) {
+        return new GDIPFont(font);
     }
     public ITexture AllocateTexture(Bitmap bmp, string alias) {
         return new GDIPTexture(bmp);

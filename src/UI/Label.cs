@@ -19,7 +19,9 @@ public class UILabel : UIControl {
     private Brush p_ForeBrush;
     private TextAlign p_Align;
     private Brush p_ShadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black));
+    private bool p_Invalidate = true;
     private object p_Mutex = new object();
+
 
     private string[] p_Lines;
 
@@ -29,6 +31,9 @@ public class UILabel : UIControl {
         p_ForeBrush = Brushes.Black;
         p_Text = text;
         Font = font;
+
+        //disable focus capture
+        CaptureFocusEnabled = false;
     }
 
     public Font Font {
@@ -38,7 +43,7 @@ public class UILabel : UIControl {
             if (p_Font == value) { return; }
 
             p_Font = value;
-            invalidate();
+            p_Invalidate = true;
         }
     }
     public string Text {
@@ -48,7 +53,7 @@ public class UILabel : UIControl {
             if (p_Text == value) { return; }
 
             p_Text = value;
-            invalidate();
+            p_Invalidate = true;
         }
     }
     public Brush ForeBrush {
@@ -62,29 +67,21 @@ public class UILabel : UIControl {
         }
     }
 
-    private bool p_InvalidateOnNextRender = false;
-    private void invalidate() {
+    private void invalidate(IRenderContext context, IRenderer renderer) {
         /*this should only ever fail once when a font has been changed
          because a font MUST be allocated on the main rendering thread.*/
-        try {
-            Size = p_Renderer.MeasureString(p_Text, p_Font);
-        }
-        catch {
-            p_InvalidateOnNextRender = true;
-            return;
-        }
+        IFont font = context.AllocateFont(p_Font);
+        Size = renderer.MeasureString(p_Text, font);
 
         //update text information
-        lock (p_Mutex) {
-            p_Lines = p_Text.Split('\n');
-        }
-        p_InvalidateOnNextRender = false;
+        p_Lines = p_Text.Split('\n');
+        p_Invalidate = false;
     }
 
     public override void Update() { }
     public override void Draw(IRenderContext context, IRenderer renderer) {
-        if (p_InvalidateOnNextRender) {
-            invalidate();
+        if (p_Invalidate) {
+            invalidate(context, renderer);
         }
 
         Point rLocation = RenderLocation;
@@ -94,7 +91,7 @@ public class UILabel : UIControl {
         int shadowSize = 3;
 
         //set the font
-        renderer.SetFont(p_Font);
+        IFont font = renderer.SetFont(p_Font);
 
         /*left align is just render as normal*/
         if (p_Align == TextAlign.Left) {
@@ -120,7 +117,7 @@ public class UILabel : UIControl {
             string line = lines[c];
 
             //get the render size of the text
-            Size lineSize = p_Renderer.MeasureString(line, p_Font);
+            Size lineSize = p_Renderer.MeasureString(line, font);
 
             /*calculate x offset based off alignment type*/
             int xOffset = 0;

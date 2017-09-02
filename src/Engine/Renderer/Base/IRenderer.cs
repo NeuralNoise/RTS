@@ -23,7 +23,7 @@ public interface IRenderer {
     void SetTexture(ITexture texture);
     void SetTexture(string alias);
 
-    void SetFont(Font font);
+    IFont SetFont(Font font);
     void SetColor(Color color);
     void SetBrush(Brush brush);
     void SetPen(Pen pen);
@@ -43,7 +43,10 @@ public interface IRenderer {
     void FillPath(GraphicsPath path);
 
     void DrawString(string str, int x, int y);
-    Size MeasureString(string str, Font font);
+    Size MeasureString(string str, IFont font);
+
+    int GetCharWidth(char character, IFont font);
+    int GetFontHeight(IFont font);
 
     void DrawTexture(int x, int y, int width, int height);
     void DrawTextureUnscaled(int x, int y);
