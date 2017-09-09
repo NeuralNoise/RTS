@@ -19,6 +19,8 @@ public unsafe partial class Hotloader {
         byte* blockStart = ptr;
         byte* blockEnd = ptr;
 
+        bool negativeFlag = false;
+
         //keep track of what classes/variables are being added.
         List<HotloaderClass> fileClasses = new List<HotloaderClass>();
         List<HotloaderVariable> fileVariables = new List<HotloaderVariable>();
@@ -81,7 +83,7 @@ public unsafe partial class Hotloader {
                 //we include the last character
                 //in the block.
                 if (atEnd && !whitespace && nameChar) { blockEnd++; }
-
+                
                 //is the block blank?
                 bool isBlank = blockStart == blockEnd;
                 int blockLength = (int)(blockEnd - blockStart);
@@ -92,10 +94,11 @@ public unsafe partial class Hotloader {
                         fileClasses,
                         fileVariables,
                         file,
-                        ref blockStart,
+                        blockStart,
                         blockEnd,
                         currentLine,
                         currentColumn - blockLength + 1,
+                        ref negativeFlag,
                         ref mode,
                         ref currentAccessor,
                         ref currentVariable,
@@ -278,6 +281,7 @@ public unsafe partial class Hotloader {
                 case '*': mathOp = HotloaderValueOperator.MULTIPLY; break;
                 case '/': mathOp = HotloaderValueOperator.DIVIDE; break;
                 case '^': mathOp = HotloaderValueOperator.POWER; break;
+                case '%': mathOp = HotloaderValueOperator.MODULUS; break;
                 case '&': mathOp = HotloaderValueOperator.AND; break;
                 case '|': mathOp = HotloaderValueOperator.OR; break;
                 case '?': mathOp = HotloaderValueOperator.XOR; break;               
@@ -294,15 +298,40 @@ public unsafe partial class Hotloader {
                             (char)current));
             }
 
-            //add the operator
+            //wait, was this negative?
+            bool addOp = true;
+            if (mathOp == HotloaderValueOperator.SUBTRACT) { 
+                //make sure there would be an operand before
+                //the subtract. Otherwise we assume it's a 
+                //negative integer/decimal.
+                negativeFlag =
+                    currentExpression.Operands ==
+                    currentExpression.Operators;
+                addOp = false;
+            }
+
             if (mathOp != HotloaderValueOperator.NONE) {
-                currentExpression.AddOperator(mathOp);
+                //if we have discovered a negate operator
+                //do not add this as a maths operator!
+                if (addOp) {
+                    currentExpression.AddOperator(mathOp);                
+                }
 
                 blockStart = blockEnd = ptr;
                 continue;
             }
             #endregion
             #endregion
+
+            //invalid character?
+            if (!nameChar) {
+                throw new HotloaderParserException(
+                    currentLine,
+                    currentColumn,
+                    String.Format(
+                        "Invalid character {0}",
+                        (char)current));
+            }
 
             //incriment block end to include this
             //byte so later we can evaluate blocks
@@ -325,9 +354,10 @@ public unsafe partial class Hotloader {
                              List<HotloaderClass> classes,
                              List<HotloaderVariable> variables,
                              HotloaderFile file, 
-                             ref byte* blockPtr, byte* blockEnd,
+                             byte* blockPtr, byte* blockEnd,
                              int currentLine, int currentColumn,
-                             ref parserMode mode,                     
+                             ref bool negativeFlag,
+                             ref parserMode mode,               
                              ref HotloaderAccessor currentAccessor, 
                              ref HotloaderVariable currentVariable,
                              ref HotloaderExpression currentExpression,
@@ -413,19 +443,24 @@ public unsafe partial class Hotloader {
             }
 
             //get the class
-            HotloaderClass cls = new HotloaderClass(block);
-            classes.Add(cls);
+            HotloaderClass cls = currentClass.GetClass(block);
+            if (cls == null) {
+                cls = new HotloaderClass(block);
 
-            //only reason this will return false is 
-            //if it already exists!
-            if (!currentClass.AddClass(cls)) {
-                throw new HotloaderParserException(
-                    currentLine,
-                    currentColumn,
-                    String.Format(
-                        "Cannot declare class \"{0}\". Name already used elsewhere.",
-                        block));
+                //only reason this will return false is 
+                //if it already exists!
+                if (!currentClass.AddClass(cls)) {
+                    throw new HotloaderParserException(
+                        currentLine,
+                        currentColumn,
+                        String.Format(
+                            "Cannot declare class \"{0}\". Name already used elsewhere.",
+                            block));
+                }
             }
+            
+
+            classes.Add(cls);
 
             //set the current class to the newly created one
             //so every variable/class added will be added 
@@ -475,12 +510,13 @@ public unsafe partial class Hotloader {
             //if we can't change this variable (it's marked as static
             //just set the current variable to a dummy one.
             if ((currentVariable.Accessors & HotloaderAccessor.STATIC) == HotloaderAccessor.STATIC) {
-                currentVariable = new HotloaderVariable("DUMMY", this);
+                currentVariable = new HotloaderVariable("dummy", this);
                 currentVariable.changeParent(currentClass);
             }
 
             //set expression
             currentExpression = currentVariable.Value;
+            currentExpression.Clear();
 
             //set accessors
             currentVariable.Accessors = currentAccessor;
@@ -514,9 +550,15 @@ public unsafe partial class Hotloader {
 
             double decimalValue;
             bool isDecimal = Double.TryParse(block, out decimalValue);
-            if (isDecimal) {                 
+            if (isDecimal) {
                 //is it an actual decimal or integer?
                 bool explicitDecimal = block.Contains(".");
+
+                //negate?
+                if (negativeFlag) {
+                    decimalValue = -decimalValue;
+                    negativeFlag = false;
+                }
 
                 //deturmine value type
                 HotloaderValueType type =
@@ -527,7 +569,7 @@ public unsafe partial class Hotloader {
                 //deturmine raw object for the string
                 object raw = decimalValue;
                 if (!explicitDecimal) {
-                    raw = Convert.ToInt64(block);
+                    raw = (long)decimalValue;
                 }
 
                 currentExpression.AddOperand(
@@ -541,6 +583,20 @@ public unsafe partial class Hotloader {
             #endregion
 
             #region variable?
+
+            //verify the name
+            while (blockPtr != blockEnd) {
+                byte current = *(blockPtr++);
+                if (!isNameCharacter(current)) {
+                    throw new HotloaderParserException(
+                        currentLine,
+                        currentColumn,
+                        String.Format(
+                            "Invalid variable name \"{0}\"",
+                            block));
+                }
+            }
+
             //default to a variable reference
             currentExpression.AddOperand(
                 block,

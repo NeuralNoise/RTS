@@ -10,12 +10,14 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 
 public class HotloaderFile {
     private string p_Filename;
     private int p_Hash;
     private long p_LastModified;
     private long p_HashLastChecked;
+    
 
     public HotloaderFile(string filename) { 
         //does the file exist?
@@ -91,7 +93,6 @@ public class HotloaderFile {
         return modified;
     }
 
-
     private int getHash(FileStream stream) {
         /*
             just return the hashed string of the file data 
@@ -107,7 +108,6 @@ public class HotloaderFile {
         text = null;
         return hash;
     }
-
 
     public string Filename { get { return p_Filename; } }
 

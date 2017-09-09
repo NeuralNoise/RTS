@@ -169,6 +169,13 @@ public class Game {
 
         p_Cursor.Draw(context, renderer);
 
+
+        renderer.SetFont(new Font("Arial", 12, FontStyle.Bold));
+        renderer.DrawString(
+            p_Hotloader["print"].ToString(),
+            10, 100);
+
+
         renderer.EndFrame();
     }
     

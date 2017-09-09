@@ -72,10 +72,12 @@ public class UITextBox : UIControl {
             rX, rY, Width, Height);
 
         //draw border
-        renderer.SetPen(new Pen(Brushes.Black, 1));
-        renderer.DrawQuad(
-            rX, rY, Width, Height);
-        renderer.SetBrush(p_ForeBrush);
+        if (Focused) {
+            renderer.SetPen(new Pen(Brushes.Black, 1));
+            renderer.DrawQuad(
+                rX, rY, Width, Height);
+            renderer.SetBrush(p_ForeBrush);
+        }
 
         #region draw Carat
         if (Focused && p_ShowCarrat) {

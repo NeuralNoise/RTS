@@ -20,6 +20,8 @@ public class HotloaderExpression {
 
     private HotloaderVariable p_Variable;
 
+    private GetValueCallback p_Callback;
+
     private object p_Mutex = new object();
    
     public HotloaderExpression(Hotloader hotloader, HotloaderVariable variable) {
@@ -59,6 +61,10 @@ public class HotloaderExpression {
     }
     public object Evaluate(out HotloaderValueType type) {
         type = HotloaderValueType.NONE;
+
+        if (p_Callback != null) {
+            return p_Callback(this);
+        }
 
         Monitor.Enter(p_Mutex);
 
@@ -201,6 +207,50 @@ public class HotloaderExpression {
         return buffer;
     }
 
+    public void SetValue(object value) {
+        lock (p_Mutex) { 
+            //deturmine what value type to fit in
+            HotloaderValueType type = HotloaderValueType.NONE;
+
+            if (   
+                   value is sbyte ||
+                   value is byte ||
+                   value is ushort ||
+                   value is short ||
+                   value is uint ||
+                   value is int ||
+                   value is long ||
+                   value is ulong) {
+                type = HotloaderValueType.NUMERICAL;    
+            }
+            else if (
+                  value is float ||
+                  value is double ||
+                  value is decimal) {
+                type = HotloaderValueType.DECIMAL;
+            }
+            else if (value is bool) {
+                type = HotloaderValueType.BOOLEAN;
+            }
+            else if (value is string) {
+                type = HotloaderValueType.STRING;
+            }
+            else {
+                throw new Exception("Type \"" + value.GetType().FullName + "\" is not supported");
+            }
+           
+            //
+            Clear();
+            AddOperand(
+                value,
+                type,
+                -1, -1);
+        }
+    }
+    public void SetCallback(GetValueCallback callback) {
+        p_Callback = callback;
+    }
+
     public bool Empty {
         get {
             return p_Operands.Length == 0;
@@ -212,6 +262,17 @@ public class HotloaderExpression {
             p_Operators = new HotloaderValueOperator[0];
         }
     }
+
+    public object Value {
+        get { return Evaluate(); }
+        set {
+            SetValue(value);
+        }
+    }
+
+    public HotloaderVariable Variable { get { return p_Variable; } }
+    public int Operands { get { return p_Operands.Length; } }
+    public int Operators { get { return p_Operators.Length; } }
 
     private object toType(object value, HotloaderValueType sourceType, HotloaderValueType destType) {
         //same type?
@@ -258,4 +319,6 @@ public class HotloaderExpression {
 
         }
     }
+
+    public delegate object GetValueCallback(HotloaderExpression expression);
 }

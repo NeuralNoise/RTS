@@ -28,10 +28,25 @@ public unsafe partial class Hotloader : IDisposable {
         p_Heartbeat = new Heartbeat("hotloader");
         p_Heartbeat.Speed(10);
         p_Heartbeat.Start(this, tick);
+
+        try { AddFile("test.txt"); }
+        catch(HotloaderParserException ex) {
+            Console.WriteLine(ex.Message);
+        }
     }
 
     public HotloaderFile AddFile(string filename) {
+        filename = new FileInfo(filename).FullName;
+
         lock (p_Mutex) {
+
+            //does the file already exist?
+            foreach (HotloaderFile f in p_Files) {
+                if (f.Filename.ToLower() == filename.ToLower()) {
+                    return f;
+                }
+            }
+
             HotloaderFile buffer = new HotloaderFile(filename);
             p_Files.Add(buffer);
 
@@ -54,7 +69,7 @@ public unsafe partial class Hotloader : IDisposable {
         expression = expression.Replace(";", "\";\"");
 
         //create a variable name that will never occur in normal code.
-        string variableName = generateString(new Random(), 10);
+        string variableName = generateString(new Random(), 1000);
         expression = variableName + "=" + expression + ";";
 
         //convert the expression to just a variable being assigned and grab
@@ -137,5 +152,13 @@ public unsafe partial class Hotloader : IDisposable {
     }
     public void Dispose() {
         p_Heartbeat.Stop();
+    }
+
+    public object this[string fullName] {
+        get {
+            HotloaderVariable var = p_GlobalClass.ResolveVariable(fullName);
+            if (var == null) { return null; }
+            return var.Value.Evaluate();
+        }
     }
 }

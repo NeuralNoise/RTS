@@ -16,12 +16,19 @@ public class HotloaderVariable {
     private int p_Hash;
     private string p_Name;
     private HotloaderExpression p_Value;
-
+    
     public HotloaderVariable(string name, Hotloader hotloader) {
         p_Name = name;
         p_Hash = name.GetHashCode();
         p_Accessors = HotloaderAccessor.NONE;
         p_Value = new HotloaderExpression(hotloader, this);
+    }
+    public HotloaderVariable(string name, object value, Hotloader hotloader)
+        : this(name, value, HotloaderAccessor.NONE, hotloader) { }
+    public HotloaderVariable(string name, object value, HotloaderAccessor accessors, Hotloader hotloader)
+        : this(name, hotloader) {
+            p_Value.SetValue(value);
+            p_Accessors = accessors;
     }
 
     public string Name { get { return p_Name; } }
