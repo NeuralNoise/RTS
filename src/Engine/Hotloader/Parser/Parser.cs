@@ -8,6 +8,7 @@
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
 using System;
+using System.IO;
 using System.Text;
 using System.Collections.Generic;
 
@@ -22,8 +23,8 @@ public unsafe partial class Hotloader {
         bool negativeFlag = false;
 
         //keep track of what classes/variables are being added.
-        List<HotloaderClass> fileClasses = new List<HotloaderClass>();
         List<HotloaderVariable> fileVariables = new List<HotloaderVariable>();
+        List<HotloaderFile> fileIncludes = new List<HotloaderFile>();
 
         //
         HotloaderClass currentClass = p_GlobalClass;
@@ -91,7 +92,6 @@ public unsafe partial class Hotloader {
                 //read the block as a string
                 if (!isBlank) {
                     handleBlock(
-                        fileClasses,
                         fileVariables,
                         file,
                         blockStart,
@@ -133,7 +133,8 @@ public unsafe partial class Hotloader {
             #region string literal
             if (current == '"') {
                 //valid?
-                if (mode != parserMode.ASSIGNMENT) {
+                if (mode != parserMode.ASSIGNMENT &&
+                    mode != parserMode.INCLUDE) {
                     throw new HotloaderParserException(
                         currentLine,
                         currentColumn,
@@ -156,12 +157,33 @@ public unsafe partial class Hotloader {
                 string read = readString(literalStart, literalEnd);
                 read = read.Replace("\\", "");
 
-                //add operand
-                currentExpression.AddOperand(
-                    read,
-                    HotloaderValueType.STRING,
-                    currentLine,
-                    currentColumn);
+                //include?
+                if (mode == parserMode.INCLUDE) {                    
+                    mode = parserMode.NONE;
+                    if (!File.Exists(read)) {
+                        throw new HotloaderParserException(
+                            currentLine,
+                            currentColumn,
+                            String.Format(
+                                "Cannot include file \"{0}\". Does not exist.",
+                                read));
+                    }
+
+                    //does the file exist?
+                    HotloaderFile include = GetFile(read);
+                    if (include == null) {
+                        include = AddFile(read);
+                        fileIncludes.Add(include);
+                    }
+                }
+                else {
+                    //add operand
+                    currentExpression.AddOperand(
+                        read,
+                        HotloaderValueType.STRING,
+                        currentLine,
+                        currentColumn);
+                }
 
                 //update line position
                 currentColumn += read.Length - 1;
@@ -273,23 +295,25 @@ public unsafe partial class Hotloader {
             }
             #endregion
 
-            #region maths
-            HotloaderValueOperator mathOp = HotloaderValueOperator.NONE;
+            #region value operators
+            HotloaderValueOperator valueOp = HotloaderValueOperator.NONE;
             switch ((char)current) {
-                case '+': mathOp = HotloaderValueOperator.ADD; break;
-                case '-': mathOp = HotloaderValueOperator.SUBTRACT; break;
-                case '*': mathOp = HotloaderValueOperator.MULTIPLY; break;
-                case '/': mathOp = HotloaderValueOperator.DIVIDE; break;
-                case '^': mathOp = HotloaderValueOperator.POWER; break;
-                case '%': mathOp = HotloaderValueOperator.MODULUS; break;
-                case '&': mathOp = HotloaderValueOperator.AND; break;
-                case '|': mathOp = HotloaderValueOperator.OR; break;
-                case '?': mathOp = HotloaderValueOperator.XOR; break;               
+                case '+': valueOp = HotloaderValueOperator.ADD; break;
+                case '-': valueOp = HotloaderValueOperator.SUBTRACT; break;
+                case '*': valueOp = HotloaderValueOperator.MULTIPLY; break;
+                case '/': valueOp = HotloaderValueOperator.DIVIDE; break;
+                case '^': valueOp = HotloaderValueOperator.POWER; break;
+                case '%': valueOp = HotloaderValueOperator.MODULUS; break;
+                case '&': valueOp = HotloaderValueOperator.AND; break;
+                case '|': valueOp = HotloaderValueOperator.OR; break;
+                case '?': valueOp = HotloaderValueOperator.XOR; break;
+
+                case '!': valueOp = HotloaderValueOperator.NOT; break;
             }
 
             //are we expecting a math operation?
-            if (mathOp != HotloaderValueOperator.NONE &&
-               mode != parserMode.ASSIGNMENT) {
+            if (valueOp != HotloaderValueOperator.NONE &&
+                mode != parserMode.ASSIGNMENT) {
                    throw new HotloaderParserException(
                        currentLine,
                        currentColumn,
@@ -300,7 +324,7 @@ public unsafe partial class Hotloader {
 
             //wait, was this negative?
             bool addOp = true;
-            if (mathOp == HotloaderValueOperator.SUBTRACT) { 
+            if (valueOp == HotloaderValueOperator.SUBTRACT) { 
                 //make sure there would be an operand before
                 //the subtract. Otherwise we assume it's a 
                 //negative integer/decimal.
@@ -310,11 +334,11 @@ public unsafe partial class Hotloader {
                 addOp = false;
             }
 
-            if (mathOp != HotloaderValueOperator.NONE) {
+            if (valueOp != HotloaderValueOperator.NONE) {
                 //if we have discovered a negate operator
                 //do not add this as a maths operator!
                 if (addOp) {
-                    currentExpression.AddOperator(mathOp);                
+                    currentExpression.AddOperator(valueOp);                
                 }
 
                 blockStart = blockEnd = ptr;
@@ -347,11 +371,28 @@ public unsafe partial class Hotloader {
                 "Class not terminated");
         }
 
-        return;
+        //find all includes that have been removed from the file and remove them
+        List<HotloaderFile> oldIncludes = file.Includes;
+        foreach (HotloaderFile f in oldIncludes) {
+            if (!fileIncludes.Contains(f)) {
+                RemoveFile(f);
+            }
+        }
+
+        //find all variables that have been removed from the file and remove them
+        List<HotloaderVariable> oldFiles = file.Variables;
+        foreach (HotloaderVariable v in oldFiles) {
+            if (!fileVariables.Contains(v)) {
+                v.Remove();
+            }
+        }
+
+
+        file.setVariables(fileVariables);
+        file.setIncludes(fileIncludes);
     }
 
     private void handleBlock(
-                             List<HotloaderClass> classes,
                              List<HotloaderVariable> variables,
                              HotloaderFile file, 
                              byte* blockPtr, byte* blockEnd,
@@ -368,6 +409,20 @@ public unsafe partial class Hotloader {
 
         //hash the string so we can do quick compares with keywords
         int hash = block.GetHashCode();
+
+        #region include
+        if (hash == STRING_INCLUDE_HASH) { 
+            //valid?
+            if (mode != parserMode.NONE) {
+                throw new HotloaderParserException(
+                    currentLine,
+                    currentColumn,
+                    "Unexpected include");
+            }
+            mode = parserMode.INCLUDE;
+            return;
+        }
+        #endregion
 
         #region reserve word check
         /*since we detect errors if some keywords
@@ -459,9 +514,6 @@ public unsafe partial class Hotloader {
                 }
             }
             
-
-            classes.Add(cls);
-
             //set the current class to the newly created one
             //so every variable/class added will be added 
             //to this one.
@@ -702,11 +754,12 @@ public unsafe partial class Hotloader {
         return (ptr != end);
     }
 
-    private readonly int STRING_STATIC_HASH = "static".GetHashCode();
-    private readonly int STRING_CONST_HASH = "const".GetHashCode();
-    private readonly int STRING_END_HASH = "end".GetHashCode();
-    private readonly int STRING_TRUE_HASH = "true".GetHashCode();
-    private readonly int STRING_FALSE_HASH = "false".GetHashCode();
+    private readonly int STRING_INCLUDE_HASH =  "include".GetHashCode();
+    private readonly int STRING_STATIC_HASH =   "static".GetHashCode();
+    private readonly int STRING_CONST_HASH =    "const".GetHashCode();
+    private readonly int STRING_END_HASH =      "end".GetHashCode();
+    private readonly int STRING_TRUE_HASH =     "true".GetHashCode();
+    private readonly int STRING_FALSE_HASH =    "false".GetHashCode();
 
     [Flags]
     private enum parserMode {
@@ -714,6 +767,7 @@ public unsafe partial class Hotloader {
         CLASS =      0x01,
         VARIABLE =   0x02,
         NAME =       0x04,
-        ASSIGNMENT = 0x08
+        ASSIGNMENT = 0x08,
+        INCLUDE =    0x10
     }
 }

@@ -19,6 +19,7 @@ public unsafe partial class Hotloader : IDisposable {
     private object p_Mutex = new object();
     private long p_LastHashCheck;
     private HotloaderClass p_GlobalClass;
+    private bool p_ForceUpdate = false;
 
     public Hotloader() {
         p_GlobalClass = new HotloaderClass("GLOBALS");
@@ -39,15 +40,10 @@ public unsafe partial class Hotloader : IDisposable {
         filename = new FileInfo(filename).FullName;
 
         lock (p_Mutex) {
-
             //does the file already exist?
-            foreach (HotloaderFile f in p_Files) {
-                if (f.Filename.ToLower() == filename.ToLower()) {
-                    return f;
-                }
-            }
-
-            HotloaderFile buffer = new HotloaderFile(filename);
+            HotloaderFile buffer = GetFile(filename);
+            if (buffer != null) { return buffer; }
+            buffer = new HotloaderFile(filename);
             p_Files.Add(buffer);
 
             //trigger file changed to load the file
@@ -58,10 +54,62 @@ public unsafe partial class Hotloader : IDisposable {
                 FileShare.None);
             fileChanged(buffer, stream);
 
+            Console.WriteLine("Added " + filename);
+
             //clean up
             stream.Close();
             return buffer;
         }
+    }
+
+    public bool RemoveFile(string filename) {
+        //get the instance to remove
+        HotloaderFile file = GetFile(filename);
+        if (file == null) { return false; }
+        return RemoveFile(file);
+    }
+    public bool RemoveFile(HotloaderFile file) {
+        lock (p_Mutex) { 
+            //remove all variables we loaded from
+            //this file.
+            List<HotloaderVariable> vars = file.Variables;
+            foreach (HotloaderVariable v in vars) {
+                v.Remove();
+            }
+
+            //remove all included files
+            List<HotloaderFile> includes = file.Includes;
+            foreach (HotloaderFile i in includes) {
+                RemoveFile(i);
+            }
+
+            //remove
+            bool result = p_Files.Remove(file);
+            if (!result) { return false; }
+
+            //force update on all files since
+            //we might of removed variables
+            //that exist elsewhere.
+            p_ForceUpdate = true;
+            return true;
+        }
+    }
+
+    public bool HasFile(string filename) {
+        return GetFile(filename) != null;
+    }
+    public HotloaderFile GetFile(string filename) {
+        lock (p_Mutex) {
+            filename = new FileInfo(filename).FullName;
+            filename = filename.ToLower();
+            foreach (HotloaderFile f in p_Files) {
+                if (f.Filename.ToLower() == filename) {
+                    return f;
+                }
+            }
+            return null;
+        }
+
     }
 
     public object EvaluateExpression(string expression) {
@@ -69,7 +117,7 @@ public unsafe partial class Hotloader : IDisposable {
         expression = expression.Replace(";", "\";\"");
 
         //create a variable name that will never occur in normal code.
-        string variableName = generateString(new Random(), 1000);
+        string variableName = generateString(new Random(), 20);
         expression = variableName + "=" + expression + ";";
 
         //convert the expression to just a variable being assigned and grab
@@ -102,15 +150,51 @@ public unsafe partial class Hotloader : IDisposable {
             hot.p_LastHashCheck = now;
         }
 
-
         lock (p_Mutex) {
-            foreach (HotloaderFile file in hot.p_Files) {
-                FileStream stream;
-                if (file.HasChanged(out stream)) {
-                    hot.fileChanged(file, stream);
+
+            List<HotloaderFile> files = hot.p_Files;
+            int fileLength = files.Count;
+
+
+            //keep iterating until the files were not modified!
+            bool modified = false;
+            do {
+                for (int c = 0; c < fileLength; c++) {
+                    HotloaderFile file = files[c];
+
+                    //does the file exist?
+                    if (!File.Exists(file.Filename)) { 
+                        //remove it
+                        RemoveFile(file);
+                        modified = true;
+                        fileLength = files.Count;
+                        break;
+                    }
+
+                    //has the file changed?
+                    FileStream fileStream;
+                    bool changed = file.HasChanged(out fileStream);
+
+                    //file modified/force update?
+                    if (p_ForceUpdate || changed) {
+                        hot.fileChanged(file, fileStream);
+
+                        //a file been removed/added?
+                        if (files.Count != fileLength) {
+                            modified = true;
+                            fileLength = files.Count;
+                            fileStream.Close();
+                            break;
+                        }
+                    }
+
+                    //clean up
+                    fileStream.Close();
                 }
-                stream.Close();
             }
+            while(modified);
+
+            p_ForceUpdate = false;
         }
 
     }

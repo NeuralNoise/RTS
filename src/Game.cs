@@ -35,16 +35,16 @@ public class Game {
             p_Window.Focus();
             p_Window.BringToFront();
 
-            cmd("toggle fog");
             cmd("warp 0 0");
-            cmd("toggle los");
             cmd("zoom 0 0");
 
             cmd("toggle debug");
             cmd("toggle debug full");
 
-            testCode();
+            cmd("toggle fog");
+            cmd("toggle los");
 
+            testCode();
         };
 
         /*initialize hotloader*/
@@ -265,7 +265,7 @@ public class Game {
                 break;
 
             case "eval":
-                str = str.Substring(4);
+                str = str.Substring(5);
                 string result = "";
                 try {
                     result = p_Hotloader.EvaluateExpression(str).ToString();

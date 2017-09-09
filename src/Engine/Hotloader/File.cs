@@ -17,7 +17,9 @@ public class HotloaderFile {
     private int p_Hash;
     private long p_LastModified;
     private long p_HashLastChecked;
-    
+
+    private List<HotloaderFile> p_Included = new List<HotloaderFile>();
+    private List<HotloaderVariable> p_Variables = new List<HotloaderVariable>();
 
     public HotloaderFile(string filename) { 
         //does the file exist?
@@ -93,6 +95,15 @@ public class HotloaderFile {
         return modified;
     }
 
+    public string Filename { get { return p_Filename; } }
+
+    public List<HotloaderVariable> Variables { get { return p_Variables; } }
+    public List<HotloaderFile> Includes { get { return p_Included; } }
+
+    public override int GetHashCode() {
+        return p_Hash;
+    }
+
     private int getHash(FileStream stream) {
         /*
             just return the hashed string of the file data 
@@ -109,9 +120,13 @@ public class HotloaderFile {
         return hash;
     }
 
-    public string Filename { get { return p_Filename; } }
-
-    public override int GetHashCode() {
-        return p_Hash;
+    internal void setIncludes(List<HotloaderFile> f) {
+        p_Included = null;
+        p_Included = f;
     }
+    internal void setVariables(List<HotloaderVariable> v) {
+        p_Variables = null;
+        p_Variables = v;
+    }
+
 }

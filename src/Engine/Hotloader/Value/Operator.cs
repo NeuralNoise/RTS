@@ -26,5 +26,8 @@ public enum HotloaderValueOperator {
     /*bitwise*/
     AND =       7,
     OR =        8,
-    XOR =       9
+    XOR =       9,
+
+    /*boolean*/
+    NOT =       10,
 }

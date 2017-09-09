@@ -41,7 +41,10 @@ public class HotloaderValueOperand {
         #region variable?
         if (p_Type == HotloaderValueType.VARIABLE) {             
             //resolve the variable
-            HotloaderVariable variable = p_Globals.ResolveVariable((string)p_Raw);
+            HotloaderVariable variable = p_Variable.Parent.ResolveVariable((string)p_Raw);
+            if (variable == null) {
+                variable = p_Globals.ResolveVariable((string)p_Raw);
+            }
             if (variable == null) {
                 throw new HotloaderParserException(
                     p_Line,

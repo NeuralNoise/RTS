@@ -102,13 +102,35 @@ public class HotloaderExpression {
         }
         #endregion
 
+        //boolean?
+        if (type == HotloaderValueType.BOOLEAN) { 
+            //not operator?
+            bool not = false;
+            if (p_Operators.Length != 0) {
+                if (p_Operators[0] != HotloaderValueOperator.NOT) {
+                    throw new HotloaderParserException(
+                        p_Operands[0].Line,
+                        p_Operands[0].Column,
+                        "Invalid boolean expression");
+                }
+                not = true;
+            }
+
+            //return the boolean
+            bool value = (bool)operands[0];
+            Monitor.Exit(p_Mutex);
+            return
+                not ?
+                    !value :
+                    value;
+        }
+
         //just 1 operand?
         if (operandLength == 1) {
             type = types[0];
             Monitor.Exit(p_Mutex);
             return operands[0];
         }
-
 
         object buffer = toType(operands[0], types[0], type);
 
@@ -305,17 +327,28 @@ public class HotloaderExpression {
     public bool Valid {
         get { 
             //blank?
-            int opLength = p_Operators.Length;
-            int anLength = p_Operands.Length;
-            if (opLength == 0 && anLength == 0) {
-                return true;
-            }
+            lock (p_Mutex) {
+                int opLength = p_Operators.Length;
+                int anLength = p_Operands.Length;
+                if (opLength == 0 && anLength == 0) {
+                    return true;
+                }
 
-            //operators must be 1 less than the operand length
-            //for every 2 operands, we have 1 operator.
-            return
-                opLength ==
-                anLength - 1;
+                //remove all NOT operators from the count
+                int l = opLength;
+                for (int c = 0; c < l; c++) {
+                    if (p_Operators[c] == HotloaderValueOperator.NOT) {
+                        opLength--;
+                    }
+                }
+
+
+                //operators must be 1 less than the operand length
+                //for every 2 operands, we have 1 operator.
+                return
+                    opLength ==
+                    anLength - 1;
+            }
 
         }
     }

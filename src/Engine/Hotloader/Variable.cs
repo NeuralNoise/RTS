@@ -48,6 +48,11 @@ public class HotloaderVariable {
         }
     }
 
+    public bool Remove() {
+        if (p_Parent == null) { return false; }
+        return p_Parent.RemoveVariable(this);
+    }
+
     internal void changeParent(HotloaderClass newParent) {
         p_Parent = newParent;
     }
