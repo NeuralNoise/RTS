@@ -138,6 +138,17 @@
   <ItemGroup>
     <Compile Include="Engine\Animation\Base\IScale.cs" />
     <Compile Include="Engine\Enums\Direction.cs" />
+    <Compile Include="Engine\Hotloader\Hotloader.cs" />
+    <Compile Include="Engine\Hotloader\Class.cs" />
+    <Compile Include="Engine\Hotloader\File.cs" />
+    <Compile Include="Engine\Hotloader\Enums\Accessor.cs" />
+    <Compile Include="Engine\Hotloader\Parser\Exception.cs" />
+    <Compile Include="Engine\Hotloader\Value\Expression.cs" />
+    <Compile Include="Engine\Hotloader\Value\Operand.cs" />
+    <Compile Include="Engine\Hotloader\Value\Operator.cs" />
+    <Compile Include="Engine\Hotloader\Value\Type.cs" />
+    <Compile Include="Engine\Hotloader\Variable.cs" />
+    <Compile Include="Engine\Hotloader\Parser\Parser.cs" />
     <Compile Include="Engine\Renderer\Base\IFont.cs" />
     <Compile Include="Engine\Renderer\Base\ITexture.cs" />
     <Compile Include="Engine\Renderer\GDI+ Renderer\Objects\Font.cs" />
@@ -149,6 +160,8 @@
     <Compile Include="Engine\Renderer\OpenGL\Objects\Font.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Objects\Texture.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Renderer.cs" />
+    <Compile Include="Entities\BaseEntity.cs" />
+    <Compile Include="Entities\Entity.cs" />
     <Compile Include="Globals\BlockTypes.cs" />
     <Compile Include="Globals\Build.cs" />
     <Compile Include="Globals\Colors.cs" />

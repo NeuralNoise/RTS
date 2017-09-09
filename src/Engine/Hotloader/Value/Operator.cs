@@ -7,9 +7,24 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-public interface IAnimateScale {
-    int Width { get; set; }
-    int Height { get; set; }
+using System;
 
-    bool Scale(int dX, int dY);
+public enum HotloaderValueOperator { 
+    
+    NONE =      0,
+
+    ADD =       1,
+    SUBTRACT =  2,
+    DIVIDE =    3,
+    MULTIPLY =  4,
+
+
+    MODULUS =   5,
+
+    POWER =     6,
+
+    /*bitwise*/
+    AND =       7,
+    OR =        8,
+    XOR =       9
 }

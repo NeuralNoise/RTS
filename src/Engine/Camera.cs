@@ -11,14 +11,18 @@ using System;
 using System.Drawing;
 
 public sealed class Camera : IAnimatePosition {
-    private const int BLOCKSIZE_MIN = 16;
-    private const int BLOCKSIZE_MAX = 48;
+    public const int BLOCKSIZE_MIN = 16;
+    public const int BLOCKSIZE_MAX = 48;
 
     private int p_BlockSize;
+    
     private int p_X, p_Y;
 
     private bool p_AllowMargin;
     private int p_MarginWidth, p_MarginHeight;
+
+    /*1 pixel in total render size*/
+    private float p_WidthScalar, p_HeightScalar;
 
     private Game p_Game;
 
@@ -26,9 +30,15 @@ public sealed class Camera : IAnimatePosition {
         p_Game = game;
     }
 
-    public void Move(int dX, int dY) {
+    public bool Move(int dX, int dY) {
+        //apply delta
+        int oldX = p_X;
+        int oldY = p_Y;
         p_X += dX;
         p_Y += dY;
+
+        //
+        int success = 2;
 
         //check margin
         if (p_AllowMargin) {
@@ -47,14 +57,28 @@ public sealed class Camera : IAnimatePosition {
 
             int maxX = marginW + ((map.Width - blocksPerFrame.Width) * p_BlockSize);
             int maxY = marginH + ((map.Height - blocksPerFrame.Height) * p_BlockSize);
-            if (p_X > maxX) { p_X = maxX; }
-            if (p_Y > maxY) { p_Y = maxY; }
+            if (p_X > maxX) {
+                success--;
+                p_X = maxX; 
+            }
+            if (p_Y > maxY) {
+                success--;
+                p_Y = maxY; 
+            }
         }
 
         //fire changed
         if (CameraChanged != null) {
             CameraChanged(this);
         }
+
+        //only return true if X or Y were changed.
+        bool ret = success != 0;
+        if (!ret) {
+            p_X = oldX;
+            p_Y = oldY;
+        }
+        return ret;
     }
     public void Scale(int d) {
         //deturmine the block the camera is currently at.
@@ -74,6 +98,12 @@ public sealed class Camera : IAnimatePosition {
             p_BlockSize = BLOCKSIZE_MAX;
         }
 
+        /*update width/height scalars*/
+        Map map = p_Game.Map;
+        int totalRenderWidth = map.Width * p_BlockSize;
+        int totalRenderHeight = map.Height * p_BlockSize;
+        p_WidthScalar = 1.0f / totalRenderWidth;
+        p_HeightScalar = 1.0f / totalRenderHeight;
 
         //move to the old position since the 
         //camera would of moved due to the resize.
@@ -94,13 +124,21 @@ public sealed class Camera : IAnimatePosition {
         Move(0, 0);
     }
 
-    public void MoveAbs(int x, int y) {
-        Move(
+    public bool MoveAbs(int x, int y) {
+        return Move(
             -p_X + x,
             -p_Y + y);
     }
     public void ZoomAbs(int size) {
         Scale(-p_BlockSize + size);
+    }
+    public void ForceZoomAbs(int size) {
+        /*as the name suggests, we don't bound check the size.*/
+        p_BlockSize = size;
+
+        if (CameraChanged != null) {
+            CameraChanged(this);
+        }
     }
 
     public void MoveCenter() {
@@ -148,6 +186,12 @@ public sealed class Camera : IAnimatePosition {
         get { return p_BlockSize; }
         set {
             ZoomAbs(value);
+        }
+    }
+
+    public float BlockSizeScalar {
+        get {
+            return (p_BlockSize * 1.0f / BLOCKSIZE_MAX);
         }
     }
 

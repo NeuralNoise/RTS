@@ -11,7 +11,6 @@ using System;
 using System.Drawing;
 
 /*just a higher deriving font object.*/
-
 public class GDIPTexture : ITexture {
     private Bitmap p_Bitmap;
     public GDIPTexture(Bitmap bmp) {

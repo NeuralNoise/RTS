@@ -19,6 +19,7 @@ public unsafe class MapRenderer {
     private Camera p_Camera;
     private Game p_Game;
     private Map p_Map;
+    private bool p_ShowGrid = false;
     private object p_Mutex = new object();
 
     private bool p_UpdateVisibleBlocks = true;
@@ -191,6 +192,7 @@ public unsafe class MapRenderer {
 
     public void Invalidate() { p_UpdateVisibleBlocks = true; }
 
+
     private void drawBlock(IRenderContext context, IRenderer renderer, VisibleBlock vBlock, bool* los) {
         Block block = *vBlock.Block;
         Color color = Globals.COLOR_TERRAIN_GRASS;
@@ -232,6 +234,16 @@ public unsafe class MapRenderer {
 
             renderer.SetBrush(new SolidBrush(color));
             renderer.FillQuad(
+                vBlock.RenderX,
+                vBlock.RenderY,
+                blockSize,
+                blockSize);
+        }
+
+        /*draw grid*/
+        if (p_ShowGrid) {
+            renderer.SetPen(new Pen(new SolidBrush(Color.FromArgb(40, Color.Black))));
+            renderer.DrawQuad(
                 vBlock.RenderX,
                 vBlock.RenderY,
                 blockSize,
@@ -591,6 +603,10 @@ public unsafe class MapRenderer {
                 return p_VisibleBlocks;
             }
         } 
+    }
+    public bool ShowGrid {
+        get { return p_ShowGrid; }
+        set { p_ShowGrid = value; }
     }
 
     public event OnBeginFrameRenderEventHandler BeginRenderFrame;

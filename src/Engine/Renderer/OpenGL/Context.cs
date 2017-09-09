@@ -153,7 +153,6 @@ public static unsafe partial class OpenGL {
             Size size = bmp.Size;
 
             //has the texture already been defined?
-            
             ITexture exist = GetTexture(alias);
             if (exist != null) {
                 Monitor.Exit(p_Mutex);
@@ -179,7 +178,7 @@ public static unsafe partial class OpenGL {
                 size.Width,
                 size.Height,
                 0,
-                RGBA,
+                BGRA,
                 UNSIGNED_BYTE,
                 bmpData.Scan0);
 

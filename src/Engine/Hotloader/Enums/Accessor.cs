@@ -7,9 +7,12 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-public interface IAnimateScale {
-    int Width { get; set; }
-    int Height { get; set; }
+using System;
 
-    bool Scale(int dX, int dY);
+[Flags]
+public enum HotloaderAccessor { 
+    NONE = 0x00,
+
+    STATIC = 0x01,  /*only set from loading once*/
+    CONST = 0x02 /*cannot be changed in runtime*/
 }

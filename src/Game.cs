@@ -7,7 +7,6 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
 using System.IO;
 using System.Reflection;
@@ -22,6 +21,7 @@ public class Game {
     private Camera p_Camera;
     private Map p_Map;
     private MapRenderer p_MapRenderer;
+    private Hotloader p_Hotloader;
 
     public Game(GameWindow wnd) {
         p_Window = wnd;
@@ -47,14 +47,19 @@ public class Game {
 
         };
 
-        /*initialize camera*/
+        /*initialize hotloader*/
+        p_Hotloader = new Hotloader();
+
+        /*initialize the camera*/
         p_Camera = new Camera(this);
-        p_Camera.ZoomAbs(32);
-        p_Camera.MoveCenter(250, 250);
 
         /*initialize map*/
         p_Map = new Map(this, 1000, 1000);
         p_MapRenderer = new MapRenderer(this, p_Map, p_Camera);
+
+        /*setup camera position*/
+        p_Camera.ZoomAbs(32);
+        p_Camera.MoveCenter(250, 250);
 
         /*init sub-systems*/
         initUI();
@@ -105,6 +110,7 @@ public class Game {
     private IUI p_EventHijacker;
     public void HijackEvents(IUI ui) {
         if (p_EventHijacker != null) {
+            
             throw new Exception("A UI element already has control over events.");
         }
 
@@ -198,11 +204,8 @@ public class Game {
         p_DebugTextBox = (UITextBox)addUI(new UITextBox(this));
         p_DebugTextBox.Visible = false;
         p_DebugTextBox.Text = "";
-        p_DebugTextBox.Font = new Font("Arial", 20, FontStyle.Bold);
+        p_DebugTextBox.Font = new Font("Arial", 20, FontStyle.Regular);
         p_DebugTextBox.Width = 400;
-        p_DebugTextBox.Location = new Point(
-            (p_Window.ClientSize.Width / 2) - (p_DebugTextBox.Width / 2),
-            (p_Window.ClientSize.Height / 2) - (p_DebugTextBox.Height / 2));
 
         p_DebugTextBox.KeyDown += delegate(Game game, KeyEventArgs e) {            
             if (e.KeyCode != Keys.Enter) { return; }
@@ -224,17 +227,19 @@ public class Game {
         if (p_DebugPrompt) { return; }
 
         p_DebugPrompt = true;
+        p_DebugTextBox.Location = new Point(
+            (p_Window.ClientSize.Width / 2) - (p_DebugTextBox.Width / 2),
+            (p_Window.ClientSize.Height / 2) - (p_DebugTextBox.Height / 2));
         p_DebugTextBox.Text = "";
         p_DebugTextBox.Visible = true;
         p_DebugTextBox.Focus();    
     }
     private void cmd(string str) {
-        p_Messages.AddMessage("Player: " + str, Color.White);
-        
-        str = str.ToLower();
-        string[] txt = str.Split(' ');
+        string[] txt = str.ToLower().Split(' ');
         txt = removeBlankStr(txt);
 
+        if (txt.Length == 0) { return; }
+        
         switch (txt[0]) { 
             case "crash":
                 throw new Exception("Debug crash");
@@ -247,11 +252,23 @@ public class Game {
                 if (txt[1] == "logic") {
                     p_LogicHeartbeat.Speed(Convert.ToInt32(txt[2]));
                 }
-                if (txt[1] == "render") {
+                else if (txt[1] == "render") {
                     p_RenderHeartbeat.Speed(Convert.ToInt32(txt[2]));
                 }
                 break;
 
+            case "eval":
+                str = str.Substring(4);
+                string result = "";
+                try {
+                    result = p_Hotloader.EvaluateExpression(str).ToString();
+                }
+                catch (HotloaderParserException ex) {
+                    result = ex.Message;
+                }
+
+                p_Messages.AddMessage(result, Color.White);
+                break;
             case "logic":
                 p_LogicDisabled = txt[1] == "disable";
                 break;
@@ -262,8 +279,12 @@ public class Game {
                     Convert.ToInt32(txt[2]));
                 break;
             case "zoom":
-                p_Camera.ZoomAbs(
-                    Convert.ToInt32(txt[1]));
+                if (txt[1] == "force") {
+                    p_Camera.ForceZoomAbs(Convert.ToInt32(txt[2]));
+                }
+                else { 
+                    p_Camera.ZoomAbs(Convert.ToInt32(txt[1])); 
+                }
                 break;
             case "toggle":
                 if (txt[1] == "debug") {
@@ -278,13 +299,16 @@ public class Game {
                         p_DebugFull = !p_DebugFull;
                     }
                 }
-                if (txt[1] == "fog") {
-                    EnableFog = !EnableFog;
-                }
-                if (txt[1] == "los") {
-                    EnableLOS = !EnableLOS;
-                }
+                
+                else if (txt[1] == "fog") { EnableFog = !EnableFog; }
+                else if (txt[1] == "los") { EnableLOS = !EnableLOS; }
+                else if (txt[1] == "grid") { p_MapRenderer.ShowGrid = !p_MapRenderer.ShowGrid; }
 
+                break;
+            default:
+                p_Messages.AddMessage(
+                    "Player: " + str,
+                    Color.White); 
                 break;
         }
     }
@@ -334,7 +358,7 @@ public class Game {
                 "Blocks rendered: " + p_MapRenderer.VisibleBlocks.Count + "\n" +
                 "Blocks revealed: " + fog.BlocksRevealed + "/" + (p_Map.Width * p_Map.Height) +
                     " [" + (fog.BlocksRevealed * 1.0f / (p_Map.Width * p_Map.Height) * 100).ToString("0.00") + "%]\n" +
-                "Block size: " + p_Camera.BlockSize + "\n" +
+                "Block size: " + p_Camera.BlockSize + " (" + (p_Camera.BlockSizeScalar*100).ToString("0.00")+"%)\n" + 
                 "Cursor position: [L]" +
                     getPointString(mousePosition) + " [S]" +
                     getPointString(Cursor.Position) + " [B]" +
@@ -384,6 +408,7 @@ public class Game {
         if (p_Window.Closed) {
             //stop all heartbeats
             p_RenderHeartbeat.Stop();
+            p_Hotloader.Dispose();
 
             //force stop logic heartbeat 
             //since normal Stop() would cause a deadlock
@@ -581,7 +606,6 @@ public class Game {
         /*fire for all ui elements BUT the click drag and test if
           the mouse collids with any, if so, we don't call click+drag*/
         int uiL = p_UIElements.Length;
-        bool callClickDrag = true;
         for (int c = 0; c < uiL; c++) {
             IUI ui = p_UIElements[c];
             ui.OnMouseDown(this, mousePosition, e);
@@ -961,8 +985,6 @@ public class Game {
     }
        
     private unsafe void uiBlocksSelected(List<VisibleBlock> blocks) {
-        return;
-
         if (p_SelectedBlocks != null) {
             foreach (VisibleBlock b in p_SelectedBlocks) {
                 (*(b.Block)).Selected = false;
@@ -973,6 +995,7 @@ public class Game {
 
         if (blocks == null) { return; }
         foreach (VisibleBlock b in blocks) {
+            (*b.Block).Selected = true;
 
         }
         p_SelectedBlocks = blocks;
@@ -1011,6 +1034,7 @@ public class Game {
     private void crash(string reason, Exception ex) {
         //disable everything
         try {
+            p_Hotloader.ForceDispose();
             p_RenderHeartbeat.ForceStop();
             p_LogicHeartbeat.ForceStop();
         }

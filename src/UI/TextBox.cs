@@ -43,6 +43,8 @@ public class UITextBox : UIControl {
     }
 
     public override void Update() {
+        if (!Visible) { return; }
+
         //the Carat flips it's visibility every 500ms
         const long timeNextIncr = TimeSpan.TicksPerMillisecond * 500;
         long currentTime = DateTime.Now.Ticks;
@@ -70,7 +72,7 @@ public class UITextBox : UIControl {
             rX, rY, Width, Height);
 
         //draw border
-        renderer.SetPen(new Pen(Brushes.Black, 3));
+        renderer.SetPen(new Pen(Brushes.Black, 1));
         renderer.DrawQuad(
             rX, rY, Width, Height);
         renderer.SetBrush(p_ForeBrush);
@@ -135,6 +137,8 @@ public class UITextBox : UIControl {
     }
 
     private void handleKeyDown(object sender, KeyEventArgs e) {
+        if (!Visible) { return; }
+
         uint key = (uint)e.KeyData;
 
         #region left/right?

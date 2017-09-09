@@ -33,7 +33,7 @@ public sealed class UICursor {
     }
     
     private Bitmap getCursorBitmap() {
-        Bitmap bmp = (Bitmap)Bitmap.FromFile("cursor.png");
+        Bitmap bmp = (Bitmap)Bitmap.FromFile("sprites/cursor/default.png");
 
         Bitmap buffer = new Bitmap(bmp.Width, bmp.Height);
 

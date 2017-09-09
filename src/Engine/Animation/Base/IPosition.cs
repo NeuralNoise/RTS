@@ -12,5 +12,5 @@ public interface IAnimatePosition {
     int X { get; set; }
     int Y { get; set; }
 
-    void Move(int dX, int dY);
+    bool Move(int dX, int dY);
 }
