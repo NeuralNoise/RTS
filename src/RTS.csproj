@@ -138,11 +138,13 @@
   <ItemGroup>
     <Compile Include="Engine\Animation\Base\IScale.cs" />
     <Compile Include="Engine\Enums\Direction.cs" />
+    <Compile Include="Engine\Hotloader\Interop.cs" />
     <Compile Include="Engine\Hotloader\Hotloader.cs" />
     <Compile Include="Engine\Hotloader\Class.cs" />
     <Compile Include="Engine\Hotloader\File.cs" />
     <Compile Include="Engine\Hotloader\Enums\Accessor.cs" />
     <Compile Include="Engine\Hotloader\Parser\Exception.cs" />
+    <Compile Include="Engine\Hotloader\Value\Callbacks.cs" />
     <Compile Include="Engine\Hotloader\Value\Expression.cs" />
     <Compile Include="Engine\Hotloader\Value\Operand.cs" />
     <Compile Include="Engine\Hotloader\Value\Operator.cs" />

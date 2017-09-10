@@ -169,12 +169,13 @@ public class Game {
 
         p_Cursor.Draw(context, renderer);
 
-
-        renderer.SetFont(new Font("Arial", 12, FontStyle.Bold));
-        renderer.DrawString(
-            p_Hotloader["print"].ToString(),
-            10, 100);
-
+        try  {
+            renderer.SetFont(new Font("Arial", 12, FontStyle.Bold));
+            renderer.DrawString(
+                p_Hotloader["print"].ToString(),
+                10, 100);
+        }
+        catch { }
 
         renderer.EndFrame();
     }
@@ -272,6 +273,9 @@ public class Game {
                 }
                 catch (HotloaderParserException ex) {
                     result = ex.Message;
+                }
+                catch (Exception ex) {
+                    result = "FATAL: " + ex.Message;
                 }
 
                 p_Messages.AddMessage(result, Color.White);

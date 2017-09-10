@@ -10,6 +10,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Collections.Generic;
 
 public class HotloaderFile {
@@ -17,6 +18,8 @@ public class HotloaderFile {
     private int p_Hash;
     private long p_LastModified;
     private long p_HashLastChecked;
+    private FileStream p_Stream;
+    private object p_Mutex = new object();
 
     private List<HotloaderFile> p_Included = new List<HotloaderFile>();
     private List<HotloaderVariable> p_Variables = new List<HotloaderVariable>();
@@ -47,20 +50,7 @@ public class HotloaderFile {
 
     public bool HasChanged(out FileStream fileStream) { 
         //use a file stream to lock the file        
-        FileStream fileLock = null;
-        while (fileLock == null) {
-            //there might be an application
-            //that is writing to the file
-            //at the same time.
-            try {
-                fileLock = new FileStream(
-                    p_Filename,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.None);
-            }
-            catch { }
-        }
+        FileStream fileLock = Open();
 
         //get when the file was last modified
         FileInfo info = new FileInfo(p_Filename);
@@ -96,6 +86,40 @@ public class HotloaderFile {
     }
 
     public string Filename { get { return p_Filename; } }
+
+    public FileStream Open() {
+        //wait until we can get a lock on the file!
+        lock (p_Mutex) {
+            if (p_Stream != null) { return p_Stream; }
+
+            while (true) {
+                try {
+                    p_Stream = new FileStream(
+                        p_Filename,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.None);
+                    return p_Stream;
+                }
+                catch { }
+            }
+        }
+    }
+    public void Close() {
+        lock (p_Mutex) {
+            p_Stream.Close();
+            p_Stream.Dispose();
+            p_Stream = null;
+        }
+    }
+
+    public FileStream Lock() {
+        Monitor.Enter(p_Mutex);
+        return p_Stream;
+    }
+    public void Unlock() {
+        Monitor.Exit(p_Mutex);
+    }
 
     public List<HotloaderVariable> Variables { get { return p_Variables; } }
     public List<HotloaderFile> Includes { get { return p_Included; } }

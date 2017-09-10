@@ -20,7 +20,8 @@ public class HotloaderExpression {
 
     private HotloaderVariable p_Variable;
 
-    private GetValueCallback p_Callback;
+    private HotloaderEvaluationCallback p_EvaluationCallback;
+    private HotloaderAssignmentCallback p_AssignmentCallback;
 
     private object p_Mutex = new object();
    
@@ -34,14 +35,25 @@ public class HotloaderExpression {
     }
 
     public void AddOperator(HotloaderValueOperator op) {
+        //do not allow if constant
+        if ((p_Variable.Accessors & HotloaderAccessor.CONST) == HotloaderAccessor.CONST) {
+            return;
+        }
+
         lock (p_Mutex) {
             Array.Resize(ref p_Operators, p_Operators.Length + 1);
             p_Operators[p_Operators.Length - 1] = op;
         }
     }
-    public HotloaderValueOperand AddOperand(object raw, HotloaderValueType type, int line, int column) {
+    public HotloaderValueOperand AddOperand(object raw, HotloaderValueType type, int line, int column, HotloaderFile file) {
+        //do not allow if it's constant
+        if ((p_Variable.Accessors & HotloaderAccessor.CONST) == HotloaderAccessor.CONST) {
+            return null;
+        }
+
         lock (p_Mutex) {
            HotloaderValueOperand buffer = new HotloaderValueOperand(
+                file,
                 p_Globals,
                 line,
                 column,
@@ -60,17 +72,22 @@ public class HotloaderExpression {
         return Evaluate(out t);
     }
     public object Evaluate(out HotloaderValueType type) {
+        lock (p_Mutex) {
+            return safeEvaluate(out type);
+        }
+    }
+    private object safeEvaluate(out HotloaderValueType type) {
         type = HotloaderValueType.NONE;
 
-        if (p_Callback != null) {
-            return p_Callback(this);
+        //let the evaluation callback deal with it?
+        if (p_EvaluationCallback != null) {
+            object ret = p_EvaluationCallback();
+            type = getType(ret);
+            return ret;
         }
-
-        Monitor.Enter(p_Mutex);
 
         //check for valid evaluation
         if (!Valid) {
-            Monitor.Exit(p_Mutex);
             throw new Exception("Invalid evaluation");
         }
 
@@ -93,14 +110,19 @@ public class HotloaderExpression {
             //allow operators on bools
             if (t == HotloaderValueType.BOOLEAN &&
                operandLength != 1) {
-                   Monitor.Exit(p_Mutex);
                    throw new HotloaderParserException(
+                       opand.File,
                        opand.Line,
                        opand.Column,
                        "Booleans cannot be operands");
             }
         }
         #endregion
+
+        //empty?
+        if (operandLength == 0) {
+            return null;
+        }
 
         //boolean?
         if (type == HotloaderValueType.BOOLEAN) { 
@@ -109,6 +131,7 @@ public class HotloaderExpression {
             if (p_Operators.Length != 0) {
                 if (p_Operators[0] != HotloaderValueOperator.NOT) {
                     throw new HotloaderParserException(
+                        p_Operands[0].File,
                         p_Operands[0].Line,
                         p_Operands[0].Column,
                         "Invalid boolean expression");
@@ -118,7 +141,6 @@ public class HotloaderExpression {
 
             //return the boolean
             bool value = (bool)operands[0];
-            Monitor.Exit(p_Mutex);
             return
                 not ?
                     !value :
@@ -128,7 +150,6 @@ public class HotloaderExpression {
         //just 1 operand?
         if (operandLength == 1) {
             type = types[0];
-            Monitor.Exit(p_Mutex);
             return operands[0];
         }
 
@@ -150,8 +171,8 @@ public class HotloaderExpression {
             if (type == HotloaderValueType.STRING) { 
                 //must be add
                 if (op != HotloaderValueOperator.ADD) {
-                    Monitor.Exit(p_Mutex);
                     throw new HotloaderParserException(
+                        p_Operands[c + 1].File,
                         p_Operands[c + 1].Line,
                         p_Operands[c + 1].Column,
                         "Cannot perform operation on a string");
@@ -223,54 +244,45 @@ public class HotloaderExpression {
             #endregion
         }
 
-
-
-        Monitor.Exit(p_Mutex);
         return buffer;
     }
 
     public void SetValue(object value) {
-        lock (p_Mutex) { 
-            //deturmine what value type to fit in
-            HotloaderValueType type = HotloaderValueType.NONE;
-
-            if (   
-                   value is sbyte ||
-                   value is byte ||
-                   value is ushort ||
-                   value is short ||
-                   value is uint ||
-                   value is int ||
-                   value is long ||
-                   value is ulong) {
-                type = HotloaderValueType.NUMERICAL;    
-            }
-            else if (
-                  value is float ||
-                  value is double ||
-                  value is decimal) {
-                type = HotloaderValueType.DECIMAL;
-            }
-            else if (value is bool) {
-                type = HotloaderValueType.BOOLEAN;
-            }
-            else if (value is string) {
-                type = HotloaderValueType.STRING;
-            }
-            else {
-                throw new Exception("Type \"" + value.GetType().FullName + "\" is not supported");
-            }
-           
-            //
+        lock (p_Mutex) {
+            //wipe out everything we have currently.
             Clear();
+            
+            //null?
+            if (value == null) { return; }
+
+            //deturmine what value type to fit in
+            HotloaderValueType type = getType(value);
+            if (type == HotloaderValueType.NONE) {
+                throw new Exception("Invalid value type!");
+            }
+
+            //
             AddOperand(
                 value,
                 type,
-                -1, -1);
+                -1, -1,
+                null);
         }
     }
-    public void SetCallback(GetValueCallback callback) {
-        p_Callback = callback;
+
+    public void SetEvaluationCallback(HotloaderEvaluationCallback callback) {
+        p_EvaluationCallback = callback;
+    }
+    public void SetAssignmentCallback(HotloaderAssignmentCallback callback) {
+        p_AssignmentCallback = callback;
+    }
+
+    public void Poll() { 
+        //assignment callback?
+        if (p_AssignmentCallback != null) {
+            object value = Evaluate();
+            p_AssignmentCallback(value);
+        }
     }
 
     public bool Empty {
@@ -318,6 +330,36 @@ public class HotloaderExpression {
         }
 
     }
+    private HotloaderValueType getType(object value) {
+        HotloaderValueType type = HotloaderValueType.NONE;
+
+        if (
+               value is sbyte ||
+               value is byte ||
+               value is ushort ||
+               value is short ||
+               value is uint ||
+               value is int ||
+               value is long ||
+               value is ulong) {
+            return HotloaderValueType.NUMERICAL;
+        }
+        else if (
+              value is float ||
+              value is double ||
+              value is decimal) {
+            return HotloaderValueType.DECIMAL;
+        }
+        else if (value is bool) {
+            return HotloaderValueType.BOOLEAN;
+        }
+        else if (value is string) {
+            return HotloaderValueType.STRING;
+        }
+        else {
+            return HotloaderValueType.NONE;
+        }
+    }
 
     public HotloaderExpression Parent {
         get { return p_Parent; }
@@ -352,6 +394,4 @@ public class HotloaderExpression {
 
         }
     }
-
-    public delegate object GetValueCallback(HotloaderExpression expression);
 }

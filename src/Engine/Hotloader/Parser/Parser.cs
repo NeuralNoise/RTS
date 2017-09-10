@@ -39,18 +39,15 @@ public unsafe partial class Hotloader {
         HotloaderAccessor currentAccessor = HotloaderAccessor.NONE;
 
         //where we are in a more usable way.
-        int x = 0, y = 0;
+        int currentLine = 1;
+        int currentColumn = 0;
 
         while (ptr != ptrEnd) {
             byte current = *(ptr++);
-            x++;
+            currentColumn++;
 
             //are we at the end of the file?
             bool atEnd = ptr == ptrEnd;
-
-            //define what current line and column we are on
-            int currentColumn = x;
-            int currentLine = y + 1;
 
             #region control characters
             //newline?
@@ -58,8 +55,10 @@ public unsafe partial class Hotloader {
                 current == '\n' ||
                 current == '\r';
             if (newLine) {
-                x = 0;
-                y++;
+                if (current == '\n') {
+                    currentColumn = 0;
+                    currentLine++;
+                }
             }
 
             //whitespace
@@ -124,7 +123,10 @@ public unsafe partial class Hotloader {
             #region comment
             if (current == '#') { 
                 //skip over line
-                while (ptr != ptrEnd && *(ptr++) != '\n') ;
+                while (ptr != ptrEnd && *(ptr++) != '\n') { }
+                
+                //we hit newline?
+                if (*(ptr - 1) == '\n') { ptr--; }
                 blockStart = blockEnd = ptr;
                 continue;
             }
@@ -136,6 +138,7 @@ public unsafe partial class Hotloader {
                 if (mode != parserMode.ASSIGNMENT &&
                     mode != parserMode.INCLUDE) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         "Unexpected string literal");
@@ -144,6 +147,7 @@ public unsafe partial class Hotloader {
                 byte* literalStart = ptr;
                 if (!readStringLiteral(ref ptr, ptrEnd)) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         "String literal did not terminate");
@@ -162,6 +166,7 @@ public unsafe partial class Hotloader {
                     mode = parserMode.NONE;
                     if (!File.Exists(read)) {
                         throw new HotloaderParserException(
+                            file,
                             currentLine,
                             currentColumn,
                             String.Format(
@@ -175,6 +180,10 @@ public unsafe partial class Hotloader {
                         include = AddFile(read);
                         fileIncludes.Add(include);
                     }
+                    else if (file.Includes.Contains(include)) {
+                        fileIncludes.Add(include);
+                    }
+
                 }
                 else {
                     //add operand
@@ -182,11 +191,12 @@ public unsafe partial class Hotloader {
                         read,
                         HotloaderValueType.STRING,
                         currentLine,
-                        currentColumn);
+                        currentColumn,
+                        file);
                 }
 
                 //update line position
-                currentColumn += read.Length - 1;
+                currentColumn += (int)(literalEnd - literalStart) + 1;
 
                 blockStart = blockEnd = ptr;
                 continue;
@@ -199,6 +209,7 @@ public unsafe partial class Hotloader {
                 //valid?
                 if (mode != parserMode.ASSIGNMENT) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         "Unexpected expression character");
@@ -209,6 +220,7 @@ public unsafe partial class Hotloader {
                     //can we close?
                     if (currentExpression.Parent == null) {
                         throw new HotloaderParserException(
+                            file,
                             currentLine,
                             currentColumn,
                             "Unexpected end of expression scope");
@@ -221,7 +233,8 @@ public unsafe partial class Hotloader {
                         expression, 
                         HotloaderValueType.EVALUATION, 
                         currentLine, 
-                        currentColumn);
+                        currentColumn,
+                        file);
 
                     //close
                     currentExpression = currentExpression.Parent;
@@ -247,6 +260,7 @@ public unsafe partial class Hotloader {
                 //valid?
                 if (mode != parserMode.NONE) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         "Unexpected class symbol");
@@ -263,6 +277,7 @@ public unsafe partial class Hotloader {
                 //valid?
                 if (mode != parserMode.VARIABLE) {
                     throw new HotloaderParserException(
+                            file,
                         currentLine,
                         currentColumn,
                         "Unexpected assignment operator");
@@ -280,7 +295,8 @@ public unsafe partial class Hotloader {
                     !currentExpression.Valid ||
                     currentExpression.Parent != null ||
                     currentExpression.Empty) {
-                    throw new HotloaderParserException(
+                        throw new HotloaderParserException(
+                                file,
                         currentLine,
                         currentColumn,
                         "Unexpected end-of-expression character");
@@ -288,6 +304,11 @@ public unsafe partial class Hotloader {
 
                 mode = parserMode.NONE;
                 blockStart = blockEnd = ptr;
+
+                //poll the expression to mark the end of 
+                //an assignment so it can do necassary 
+                //functions (e.g invoke assignment callback)
+                currentExpression.Poll();
 
                 currentExpression = null;
                 currentVariable = null;
@@ -315,6 +336,7 @@ public unsafe partial class Hotloader {
             if (valueOp != HotloaderValueOperator.NONE &&
                 mode != parserMode.ASSIGNMENT) {
                    throw new HotloaderParserException(
+                       file,
                        currentLine,
                        currentColumn,
                        String.Format(
@@ -331,7 +353,7 @@ public unsafe partial class Hotloader {
                 negativeFlag =
                     currentExpression.Operands ==
                     currentExpression.Operators;
-                addOp = false;
+                //addOp = false;
             }
 
             if (valueOp != HotloaderValueOperator.NONE) {
@@ -350,6 +372,7 @@ public unsafe partial class Hotloader {
             //invalid character?
             if (!nameChar) {
                 throw new HotloaderParserException(
+                    file,
                     currentLine,
                     currentColumn,
                     String.Format(
@@ -366,12 +389,14 @@ public unsafe partial class Hotloader {
         //not ended correctly?
         if (currentClass.Parent != null) {
             throw new HotloaderParserException(
+                file,
                 -1,
                 -1,
                 "Class not terminated");
         }
 
         //find all includes that have been removed from the file and remove them
+        if (file == null) { return; }
         List<HotloaderFile> oldIncludes = file.Includes;
         foreach (HotloaderFile f in oldIncludes) {
             if (!fileIncludes.Contains(f)) {
@@ -386,7 +411,6 @@ public unsafe partial class Hotloader {
                 v.Remove();
             }
         }
-
 
         file.setVariables(fileVariables);
         file.setIncludes(fileIncludes);
@@ -415,6 +439,7 @@ public unsafe partial class Hotloader {
             //valid?
             if (mode != parserMode.NONE) {
                 throw new HotloaderParserException(
+                    file,
                     currentLine,
                     currentColumn,
                     "Unexpected include");
@@ -433,6 +458,7 @@ public unsafe partial class Hotloader {
                hash == STRING_FALSE_HASH) {
 
                    throw new HotloaderParserException(
+                       file,
                        currentLine,
                        currentColumn,
                        String.Format(
@@ -452,6 +478,7 @@ public unsafe partial class Hotloader {
         if (mode != parserMode.NONE) {
             if (isConst || isStatic) {
                 throw new HotloaderParserException(
+                    file,
                     currentLine,
                     currentColumn,
                     "Unexpected accessor");
@@ -473,6 +500,7 @@ public unsafe partial class Hotloader {
             if (currentClass.Parent == null ||
                 mode != parserMode.NONE) {
                 throw new HotloaderParserException(
+                    file,
                     currentLine,
                     currentColumn,
                     "Unexpected end of class token.");
@@ -492,6 +520,7 @@ public unsafe partial class Hotloader {
             //a class cannot have accessors!
             if (currentAccessor != HotloaderAccessor.NONE) {
                 throw new HotloaderParserException(
+                    file,
                     currentLine,
                     currentColumn,
                     "Classes cannot have accessors");
@@ -500,12 +529,13 @@ public unsafe partial class Hotloader {
             //get the class
             HotloaderClass cls = currentClass.GetClass(block);
             if (cls == null) {
-                cls = new HotloaderClass(block);
+                cls = new HotloaderClass(block, this);
 
                 //only reason this will return false is 
                 //if it already exists!
                 if (!currentClass.AddClass(cls)) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         String.Format(
@@ -531,6 +561,7 @@ public unsafe partial class Hotloader {
         //we must be in assignment mode by now..
         if (mode == parserMode.VARIABLE) {
             throw new HotloaderParserException(
+                file,
                 currentLine,
                 currentColumn,
                 "Unexpected variable declaration");
@@ -548,6 +579,7 @@ public unsafe partial class Hotloader {
                 currentVariable = new HotloaderVariable(block, this);
                 if (!currentClass.AddVariable(currentVariable)) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         String.Format(
@@ -593,7 +625,8 @@ public unsafe partial class Hotloader {
                        (block == "true"),
                        HotloaderValueType.BOOLEAN,
                        currentLine,
-                       currentColumn);
+                       currentColumn,
+                       file);
                    return;
             }
             #endregion
@@ -628,7 +661,8 @@ public unsafe partial class Hotloader {
                     raw,
                     type,
                     currentLine,
-                    currentColumn);
+                    currentColumn,
+                    file);
                 return;
             }
 
@@ -641,6 +675,7 @@ public unsafe partial class Hotloader {
                 byte current = *(blockPtr++);
                 if (!isNameCharacter(current)) {
                     throw new HotloaderParserException(
+                        file,
                         currentLine,
                         currentColumn,
                         String.Format(
@@ -654,7 +689,8 @@ public unsafe partial class Hotloader {
                 block,
                 HotloaderValueType.VARIABLE,
                 currentLine,
-                currentColumn);
+                currentColumn,
+                file);
             #endregion
         }
 

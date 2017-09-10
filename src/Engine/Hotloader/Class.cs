@@ -14,23 +14,51 @@ public class HotloaderClass {
     private List<HotloaderClass> p_ChildClasses;
     private List<HotloaderVariable> p_ChildVariables;
 
+    private Hotloader p_Hotloader;
     private HotloaderClass p_Parent;
 
     private string p_Name;
     private int p_NameHash;
     private object p_Mutex = new object();
 
-    public HotloaderClass(string name) {
+    public HotloaderClass(string name, Hotloader hotloader) {
         p_Name = name;
         p_NameHash = name.GetHashCode();
         p_ChildClasses = new List<HotloaderClass>();
         p_ChildVariables = new List<HotloaderVariable>();
+        p_Hotloader = hotloader;
     }
 
+    public bool AddVariable(string name, object value) {
+        return AddVariable(
+            name,
+            value,
+            HotloaderAccessor.NONE);
+    }
+    public bool AddVariable(string name, object value, HotloaderAccessor accessors) {
+        return AddVariable(
+            new HotloaderVariable(
+                name,
+                value,
+                accessors,
+                p_Hotloader));
+    }
+    public bool AddVariable(string name, HotloaderEvaluationCallback evaluationCallback) {
+        return AddVariable(
+            new HotloaderVariable(
+                    name,
+                    evaluationCallback,
+                    p_Hotloader));
+    }
     public bool AddVariable(HotloaderVariable variable) {
         lock (p_Mutex) {
             int hash = variable.GetHashCode();
             
+            //the name cannot contains "."
+            if (variable.Name.Contains(".")) {
+                return false;
+            }
+
             //does the name already exist?
             if (NameExists(variable.Name)) {
                 return false;
@@ -47,6 +75,7 @@ public class HotloaderClass {
             return true;
         }
     }
+
     public bool AddClass(HotloaderClass cls) {
         lock (p_Mutex) {
             //does the name already exist?

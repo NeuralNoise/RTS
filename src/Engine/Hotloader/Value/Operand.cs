@@ -16,8 +16,10 @@ public class HotloaderValueOperand {
     private int p_Line;
     private int p_Column;
     private HotloaderVariable p_Variable;
+    private HotloaderFile p_File;
 
-    public HotloaderValueOperand(HotloaderClass globals, int line, int column, 
+    public HotloaderValueOperand(HotloaderFile file,
+                                 HotloaderClass globals, int line, int column, 
                                  HotloaderVariable variable,
                                  object raw, HotloaderValueType type) {
         p_Raw = raw;
@@ -26,19 +28,19 @@ public class HotloaderValueOperand {
         p_Line = line;
         p_Column = column;
         p_Variable = variable;
+        p_File = file;
     }
 
     public object GetValue(out HotloaderValueType type) {
         type = p_Type;
 
-        
         //evaluation?
         HotloaderExpression eval = p_Raw as HotloaderExpression;
         if (eval != null) {
             return eval.Evaluate(out type);
         }
 
-        #region variable?
+        /*variable?*/
         if (p_Type == HotloaderValueType.VARIABLE) {             
             //resolve the variable
             HotloaderVariable variable = p_Variable.Parent.ResolveVariable((string)p_Raw);
@@ -47,6 +49,7 @@ public class HotloaderValueOperand {
             }
             if (variable == null) {
                 throw new HotloaderParserException(
+                    p_File,
                     p_Line,
                     p_Column,
                     String.Format(
@@ -57,6 +60,7 @@ public class HotloaderValueOperand {
             //verify no cross-referencing
             if (variable == p_Variable) {
                 throw new HotloaderParserException(
+                    p_File,
                     p_Line,
                     p_Column,
                     "Cycle-dependancy found! Cannot self-reference");
@@ -66,13 +70,12 @@ public class HotloaderValueOperand {
             object value = variable.Value.Evaluate(out type);
             return value;
         }
-        #endregion
 
         //this should never happen.
         return p_Raw;
     }
 
-
     public int Line { get { return p_Line; } }
     public int Column { get { return p_Column; } }
+    public HotloaderFile File { get { return p_File; } }
 }

@@ -30,6 +30,15 @@ public class HotloaderVariable {
             p_Value.SetValue(value);
             p_Accessors = accessors;
     }
+    public HotloaderVariable(string name, HotloaderEvaluationCallback evaluation, Hotloader hotloader)
+        : this(name, hotloader) { 
+        
+        //for obvious reasons, this is a const static
+        p_Accessors = HotloaderAccessor.CONST | HotloaderAccessor.STATIC;
+
+        //set the callback
+        p_Value.SetEvaluationCallback(evaluation);
+    }
 
     public string Name { get { return p_Name; } }
     public HotloaderAccessor Accessors {

@@ -21,8 +21,9 @@ public unsafe partial class Hotloader : IDisposable {
     private HotloaderClass p_GlobalClass;
     private bool p_ForceUpdate = false;
 
-    public Hotloader() {
-        p_GlobalClass = new HotloaderClass("GLOBALS");
+    public Hotloader() : this(true) { }
+    public Hotloader(bool addDefaultClasses) {
+        p_GlobalClass = new HotloaderClass("GLOBALS", this);
 
         /**/
         p_Files = new List<HotloaderFile>();
@@ -30,9 +31,13 @@ public unsafe partial class Hotloader : IDisposable {
         p_Heartbeat.Speed(10);
         p_Heartbeat.Start(this, tick);
 
+        if (addDefaultClasses) {
+            initDefaults();
+        }
+
         try { AddFile("test.txt"); }
         catch(HotloaderParserException ex) {
-            Console.WriteLine(ex.Message);
+            ex.Print(Console.Out);
         }
     }
 
@@ -46,18 +51,10 @@ public unsafe partial class Hotloader : IDisposable {
             buffer = new HotloaderFile(filename);
             p_Files.Add(buffer);
 
-            //trigger file changed to load the file
-            FileStream stream = new FileStream(
-                filename,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.None);
-            fileChanged(buffer, stream);
-
-            Console.WriteLine("Added " + filename);
+            //force update
+            p_ForceUpdate = true;
 
             //clean up
-            stream.Close();
             return buffer;
         }
     }
@@ -138,6 +135,15 @@ public unsafe partial class Hotloader : IDisposable {
         return variable.Value.Evaluate();
     }
 
+    public HotloaderClass Globals { get { return p_GlobalClass; } }
+
+    public void ForceDispose() {
+        p_Heartbeat.ForceStop();
+    }
+    public void Dispose() {
+        p_Heartbeat.Stop();
+    }
+
     private void tick(object state) {
         Hotloader hot = (Hotloader)state;
 
@@ -155,10 +161,10 @@ public unsafe partial class Hotloader : IDisposable {
             List<HotloaderFile> files = hot.p_Files;
             int fileLength = files.Count;
 
-
             //keep iterating until the files were not modified!
-            bool modified = false;
+            bool modified;
             do {
+                modified = false;
                 for (int c = 0; c < fileLength; c++) {
                     HotloaderFile file = files[c];
 
@@ -177,7 +183,11 @@ public unsafe partial class Hotloader : IDisposable {
 
                     //file modified/force update?
                     if (p_ForceUpdate || changed) {
-                        hot.fileChanged(file, fileStream);
+
+                        try { hot.fileChanged(file, fileStream); }
+                        catch(HotloaderParserException ex) {
+                            ex.Print(Console.Out);
+                        }
 
                         //a file been removed/added?
                         if (files.Count != fileLength) {
@@ -189,7 +199,7 @@ public unsafe partial class Hotloader : IDisposable {
                     }
 
                     //clean up
-                    fileStream.Close();
+                    file.Close();
                 }
             }
             while(modified);
@@ -198,7 +208,6 @@ public unsafe partial class Hotloader : IDisposable {
         }
 
     }
-
     private void fileChanged(HotloaderFile file, FileStream stream) {
         //read the file into memory
         byte[] data = new byte[stream.Length];
@@ -206,6 +215,7 @@ public unsafe partial class Hotloader : IDisposable {
         stream.Read(data, 0, data.Length);
         stream.Position = 0;
 
+        
         fixed (byte* ptr = data) {
             load(file, ptr, data.Length);
         }
@@ -213,7 +223,6 @@ public unsafe partial class Hotloader : IDisposable {
         //clean up
         data = null;
     }
-
     private string generateString(Random r, int length) {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
         byte[] block = new byte[length];
@@ -227,15 +236,6 @@ public unsafe partial class Hotloader : IDisposable {
 
             return new string((sbyte*)blockPtr, 0, length);
         }
-    }
-
-    public HotloaderClass Globals { get { return p_GlobalClass; } }
-
-    public void ForceDispose() {
-        p_Heartbeat.ForceStop();
-    }
-    public void Dispose() {
-        p_Heartbeat.Stop();
     }
 
     public object this[string fullName] {
