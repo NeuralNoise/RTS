@@ -31,7 +31,7 @@ public sealed class GameWindow : Form {
         
         StartPosition = FormStartPosition.CenterScreen;
         //FormBorderStyle = FormBorderStyle.FixedSingle;
-
+                
         /*set the client size by default to 80% of screen size*/
         Screen screen = Screen.FromPoint(Cursor.Position);
         Size screenSize = screen.Bounds.Size;

@@ -191,7 +191,9 @@ public class HotloaderExpression {
             bool isBitwise =
                 op == HotloaderValueOperator.AND ||
                 op == HotloaderValueOperator.OR ||
-                op == HotloaderValueOperator.XOR;
+                op == HotloaderValueOperator.XOR ||
+                op == HotloaderValueOperator.SHIFTL ||
+                op == HotloaderValueOperator.SHIFTR;
 
             //if it's bitwise, convert both sides to an int then convert back once
             //the bitwise has been done
@@ -208,6 +210,12 @@ public class HotloaderExpression {
                         break;
                     case HotloaderValueOperator.XOR:
                         result = a ^ b;
+                        break;
+                    case HotloaderValueOperator.SHIFTL:
+                        result = a << (sbyte)b;
+                        break;
+                    case HotloaderValueOperator.SHIFTR:
+                        result = a >> (sbyte)b;
                         break;
                 }
                 buffer = toType(result, HotloaderValueType.NUMERICAL, type);

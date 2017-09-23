@@ -15,7 +15,10 @@ public interface IRenderContext : IDeviceContext, IDisposable {
     int Width { get; }
     int Height { get; }
 
-    void Resize(int w, int h);
+    /// <summary>
+    /// Returns true if the context has to be recreated.
+    /// </summary>
+    bool Resize(int w, int h);
 
     ITexture AllocateTexture(Bitmap bmp, string alias);
     IFont AllocateFont(Font font);

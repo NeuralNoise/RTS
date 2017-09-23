@@ -28,6 +28,9 @@ public enum HotloaderValueOperator {
     OR =        8,
     XOR =       9,
 
+    SHIFTL =    10,
+    SHIFTR =    11,
+
     /*boolean*/
-    NOT =       10,
+    NOT =       12,
 }

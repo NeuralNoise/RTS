@@ -193,11 +193,11 @@ public static partial class OpenGL {
             */
             y += font.METRIC.tmAscent;
             
-            glRasterPos2f(x, y);
-
             //jump to the start of the compiled GL list for 
             //rendering the font bitmaps.
             glListBase(font.LIST);
+
+            glRasterPos2f(x, y);
 
             //call it.
             glCallLists(
@@ -209,6 +209,8 @@ public static partial class OpenGL {
             p_CurrentVertCount += (txt.Length << 2); // (*4)
         }
         public Size MeasureString(string str, IFont f) {
+            //return Size.Empty;
+
             //empty?
             if (String.IsNullOrEmpty(str)) { return Size.Empty; }
 
@@ -244,8 +246,7 @@ public static partial class OpenGL {
 
                 //largest width so far?
                 if (lineWidth > maxWidth) {
-                    maxWidth = lineWidth;
-                        
+                    maxWidth = lineWidth;                        
                 }
 
             }
@@ -342,12 +343,6 @@ public static partial class OpenGL {
         public int Vertices { get { return p_TotalVertCount; } }
 
         public override string ToString() {
-            int major, minor;
-
-            //get opengl version
-            glGetIntegerv(MAJOR_VERSION, out major);
-            glGetIntegerv(MINOR_VERSION, out minor);
-
             return "OpenGL " + p_Context.Version;
         }
     }

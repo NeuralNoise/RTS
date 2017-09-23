@@ -325,9 +325,12 @@ public unsafe partial class Hotloader {
                 case '/': valueOp = HotloaderValueOperator.DIVIDE; break;
                 case '^': valueOp = HotloaderValueOperator.POWER; break;
                 case '%': valueOp = HotloaderValueOperator.MODULUS; break;
+               
                 case '&': valueOp = HotloaderValueOperator.AND; break;
                 case '|': valueOp = HotloaderValueOperator.OR; break;
                 case '?': valueOp = HotloaderValueOperator.XOR; break;
+                case '<': valueOp = HotloaderValueOperator.SHIFTL; break;
+                case '>': valueOp = HotloaderValueOperator.SHIFTR; break;
 
                 case '!': valueOp = HotloaderValueOperator.NOT; break;
             }
@@ -664,6 +667,51 @@ public unsafe partial class Hotloader {
                     currentColumn,
                     file);
                 return;
+            }
+
+            #endregion
+
+            #region base conversion
+
+            if (block.Length > 2 &&
+               *blockPtr == '0') { 
+                
+                //detect base conversion
+                int sourceBase = -1;
+                byte sourceBaseByte = *(blockPtr + 1);
+                if (sourceBaseByte == 'x') { sourceBase = 16; }
+                else if (sourceBaseByte == 'b') { sourceBase = 2; }
+
+
+                //is it actually a conversion?
+                if (sourceBase != -1) { 
+                    string convert = block.Substring(2);
+
+                    //attempt to convert
+                    try {
+                        long converted = Convert.ToInt64(convert, sourceBase);
+
+                        //add the operand
+                        currentExpression.AddOperand(
+                            converted,
+                            HotloaderValueType.NUMERICAL,
+                            currentLine,
+                            currentColumn,
+                            file);
+                    }
+                    catch {
+                        throw new HotloaderParserException(
+                            file,
+                            currentLine,
+                            currentColumn,
+                            String.Format(
+                                "Unable to convert {0} from base {1}",
+                                convert,
+                                sourceBase));
+                    }
+                    return;
+                }
+
             }
 
             #endregion

@@ -112,6 +112,30 @@ public unsafe class Map : IDisposable {
         //generate resources
         generateMap();
         updateConcreteMatrix();
+
+        pathfindBench();
+    }
+
+    private void pathfindBench() {
+        int total = 0;
+        int ticks = 0;
+        while (true) {
+            break;
+            int time = Environment.TickCount;
+
+            List<Point> path = Pathfinder.ASSearch(
+                Point.Empty,
+                new Point(p_Width - 1, p_Height - 1),
+                p_ConcreteMatrix,
+                p_Width,
+                p_Height);
+
+            time = Environment.TickCount - time;
+            total += time;
+
+            Console.WriteLine("Time: " + time + "ms for " + path.Count + " points");
+            Console.WriteLine("Average: " + (total / (++ticks)) + "ms");
+        }
     }
 
     public void Lock() { Monitor.Enter(p_Mutex); }
@@ -127,9 +151,8 @@ public unsafe class Map : IDisposable {
     }
 
     private void generateMap() {
-
         MapGenerator.GenerateTerrain(this);
-
+        MapGenerator.GenerateResources(this);
     }
     private bool inRange(int value, int start, int end) {
         return

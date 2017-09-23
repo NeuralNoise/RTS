@@ -9,6 +9,12 @@
 */
 using System;
 
+/*
+    Converted from C from Ken Perlin's original code
+    http://mrl.nyu.edu/~perlin/doc/oscar.html#noise
+    [19th September 2017]
+*/
+
 public sealed class PerlinNoise {
 
     private const int B = 0x100;
@@ -65,8 +71,7 @@ public sealed class PerlinNoise {
         }
     }
 
-    public float GetHeight(int x, int y, int width, int height)
-    {
+    public float GetHeight(int x, int y, int width, int height) {
         return GetHeight(
             x * 1.0f / width,
             y * 1.0f / height);

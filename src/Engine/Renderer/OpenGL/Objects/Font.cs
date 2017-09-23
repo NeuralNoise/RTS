@@ -17,6 +17,7 @@ public static partial class OpenGL {
         public IntPtr HFONT;
         public uint LIST;
 
+        /*OBSOLETE*/
         public ABC[] GLYPHINFO;
         public TEXTMETRIC METRIC;
      

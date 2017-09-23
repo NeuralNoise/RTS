@@ -256,6 +256,10 @@ public class Game {
                 p_Messages.Clear();
                 break;
 
+            case "debug":
+                openDebugFile();
+                break;
+
             case "speed":
                 if (txt[1] == "logic") {
                     p_LogicHeartbeat.Speed(Convert.ToInt32(txt[2]));
@@ -334,6 +338,22 @@ public class Game {
             rebuild[rebuild.Length - 1] = s;
         }
         return rebuild;
+
+    }
+
+    private void openDebugFile() {
+        const string filename = "debug.txt";
+
+        //does the file already exist?
+        if (!File.Exists(filename)) {
+            File.CreateText(filename).Close();
+        }
+
+        //bind to hotloader
+        p_Hotloader.AddFile(filename);
+
+        //open it
+        System.Diagnostics.Process.Start(filename);
 
     }
 
@@ -985,10 +1005,13 @@ public class Game {
         blockY = (int)Math.Ceiling((cam.Y + cHeight) * 1.0f / cam.BlockSize);
 
         //handle the actual resize by resizing the context
-        p_Window.Context.Resize(
+        bool recreate = p_Window.Context.Resize(
             p_Window.ClientSize.Width,
             p_Window.ClientSize.Height);
-        
+        if (recreate) {
+            p_Window.RecreateContext();
+        }
+
         //move the camera to the center block
         cam.MoveCenter(
             blockX,

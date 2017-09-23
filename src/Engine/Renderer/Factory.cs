@@ -14,7 +14,15 @@ using System.Runtime.InteropServices;
 
 public static class RenderFactory {
 
-    private static string p_Renderer = "opengl";
+    private static string p_Renderer = "gdip";
+
+    static RenderFactory() {
+        //do we have OpenGL?
+        IntPtr openGLModule = OpenGL.LoadLibrary("opengl32.dll");
+        if (openGLModule != IntPtr.Zero) {
+            p_Renderer = "opengl";
+        }
+    }
 
     public static IRenderContext CreateContext(Graphics graphics, Size size) {
         switch (p_Renderer) { 

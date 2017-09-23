@@ -16,6 +16,7 @@ public partial class Hotloader {
     private void initDefaults() {
         AttachManagedClass(typeof(registers), Globals);
         AttachManagedClass(typeof(generalPurpose), Globals);
+        AttachManagedClass(typeof(str), Globals);
         AttachManagedClass(typeof(math));
         AttachManagedClass(typeof(time));
     }
@@ -203,7 +204,7 @@ public partial class Hotloader {
     }
     private static class time {
         public static object date() {
-            return DateTime.Now;
+            return DateTime.Now.ToString();
         }
 
         public static object ticksPerMillisecond() {
@@ -236,6 +237,42 @@ public partial class Hotloader {
         }
         public static object ticks() {
             return DateTime.Now.Ticks;
+        }
+    }
+
+    private static class str {
+
+        public static object toUpper() {
+            return registers.txt1.ToUpper();
+        }
+        public static object toLower() {
+            return registers.txt1.ToLower();
+        }
+        
+        public static object substrLeft() {
+            return registers.txt1.Substring(0, (int)registers.a);
+        }
+        public static object substrRight() {
+            return registers.txt1.Substring((int)registers.a);
+        }
+        public static object substr() {
+            return registers.txt1.Substring(
+                (int)registers.a,
+                (int)registers.b);
+        }
+
+        public static object length() {
+            return registers.txt1.Length;
+        }
+
+        public static object contains() {
+            return registers.txt1.Contains(registers.txt2);
+        }
+        public static object indexOf() {
+            return registers.txt1.IndexOf(registers.txt2);
+        }
+        public static object startsWith() {
+            return registers.txt1.StartsWith(registers.txt2);
         }
     }
 }

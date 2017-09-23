@@ -79,7 +79,6 @@
     <Compile Include="Engine\Animation\Base\IPosition.cs" />
     <Compile Include="Engine\Keyboard\ArrowKey.cs" />
     <Compile Include="Engine\Pathfinding\AStar\Context.cs" />
-    <Compile Include="Engine\Pathfinding\AStar\NodeQueue.cs" />
     <Compile Include="Engine\Pathfinding\IPathfinderContext.cs" />
     <Compile Include="Map\Fog\Fog.cs" />
     <Compile Include="Map\Fog\LineOfSight.cs" />
@@ -162,14 +161,17 @@
     <Compile Include="Engine\Renderer\OpenGL\Objects\Font.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Objects\Texture.cs" />
     <Compile Include="Engine\Renderer\OpenGL\Renderer.cs" />
+    <Compile Include="Engine\PtrQueue.cs" />
     <Compile Include="Entities\BaseEntity.cs" />
     <Compile Include="Entities\Entity.cs" />
     <Compile Include="Globals\BlockTypes.cs" />
     <Compile Include="Globals\Build.cs" />
     <Compile Include="Globals\Colors.cs" />
     <Compile Include="Map\Block\VisibleBlock.cs" />
+    <Compile Include="Map\Generation\ResourceGenerator.cs" />
     <Compile Include="Map\Generation\TerrainGenerator.cs" />
     <Compile Include="Map\Generation\PerlinNoise.cs" />
+    <Compile Include="Map\Island.cs" />
     <Compile Include="UI\Cursor\Pan.cs" />
     <Compile Include="UI\Messages.cs">
     </Compile>

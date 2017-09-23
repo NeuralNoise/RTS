@@ -52,7 +52,6 @@ public static unsafe partial class OpenGL {
                 cDepthBits = 32,
                 iLayerType = PFD_MAIN_PLANE
             };
-
             
             //attempt to register the pixel format
             int match = ChoosePixelFormat(p_DeviceContext, format);
@@ -82,12 +81,13 @@ public static unsafe partial class OpenGL {
             wglMakeCurrent(p_DeviceContext, IntPtr.Zero);
         }
 
-        public void Resize(int width, int height) {
+        public bool Resize(int width, int height) {
             p_Width = width;
             p_Height = height;
 
             //tell render thread to resize.
             p_ResizeUpdate = true;
+            return false;
         }
 
         public IFont AllocateFont(Font font) {
@@ -147,7 +147,7 @@ public static unsafe partial class OpenGL {
             Console.WriteLine("Added font: " + font);
             Monitor.Exit(p_Mutex);
             return buffer;
-        }
+        }        
         public ITexture AllocateTexture(Bitmap bmp, string alias) {
             Monitor.Enter(p_Mutex);
             Size size = bmp.Size;

@@ -35,6 +35,7 @@ public unsafe partial class Hotloader : IDisposable {
             initDefaults();
         }
 
+
         try { AddFile("test.txt"); }
         catch(HotloaderParserException ex) {
             ex.Print(Console.Out);

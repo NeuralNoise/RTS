@@ -75,16 +75,19 @@ public static unsafe partial class OpenGL {
     [DllImport("opengl32.dll")]
     public static extern bool wglUseFontBitmaps(IntPtr hdc, uint first, uint count, uint list);
 
-    [DllImport("opengl32", EntryPoint = "wglUseFontOutlines", CallingConvention = CallingConvention.Winapi)]
+    [DllImport("opengl32.dll")]
     public static extern bool wglUseFontOutlines(
-    IntPtr hDC,
-    [MarshalAs(UnmanagedType.U4)] UInt32 first,
-    [MarshalAs(UnmanagedType.U4)] UInt32 count,
-    [MarshalAs(UnmanagedType.U4)] UInt32 listBase,
-    [MarshalAs(UnmanagedType.R4)] Single deviation,
-    [MarshalAs(UnmanagedType.R4)] Single extrusion,
-    [MarshalAs(UnmanagedType.I4)] Int32 format,
-    [Out]GLYPHMETRICSFLOAT[] lpgmf);
+        IntPtr hDC,
+        uint first, uint count,
+        uint listBase,
+        float deviation, float extrusion,
+        int format,
+        [Out]GLYPHMETRICSFLOAT[] lpgmf);
+
+    [DllImport("opengl32.dll")]
+    public static extern void glPushAttrib(uint attrib);
+    [DllImport("opengl32.dll")]
+    public static extern void glPopAttrib();
 
 
     [DllImport("opengl32.dll")]

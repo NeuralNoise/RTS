@@ -7,8 +7,8 @@
  *
  *  REPO: http://www.github.com/tomwilsoncoder/RTS
 */
-
 using System;
+
 public static class ResourceStockPile {
 
     private static resource[] p_Resources = new resource[0];

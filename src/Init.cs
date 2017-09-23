@@ -12,9 +12,11 @@ using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
 
 static class Init {
-
+    
     [STAThread]
     static void Main(string[] args) {
         Application.EnableVisualStyles();
@@ -22,6 +24,5 @@ static class Init {
         GameWindow wnd = new GameWindow();
         Game game = new Game(wnd);
         Application.Run(wnd);
-
     }
 }

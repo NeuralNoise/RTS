@@ -37,9 +37,11 @@ public class GDIPRenderContext : IRenderContext, IDeviceContext {
     public int Width { get { return p_W; } }
     public int Height { get { return p_H; } }
 
-    public void Resize(int w, int h) {
+    public bool Resize(int w, int h) {
         p_W = w;
         p_H = h;
+        p_Base.Dispose();
+        return true;
     }
 
     public float DPIX { get { return p_Base.DpiX; } }

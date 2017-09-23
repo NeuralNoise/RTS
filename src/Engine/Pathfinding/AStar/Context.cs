@@ -25,7 +25,7 @@ public static partial class Pathfinder {
         private ASNode* p_NodeMatrix;
         private ASNode** p_AdjacentNodes;
 
-        private ASNodeQueue p_Queue;
+        private PtrQueue p_Queue;
 
         public ASContext(int width, int height, int stackSize) {
             p_Width = width;
@@ -34,7 +34,7 @@ public static partial class Pathfinder {
             /*allocate*/
             initAdjacent(out p_AdjacentNodes, out p_AdjacentLocations);
             p_NodeMatrix = initNodeMatrix(width, height);
-            p_Queue = new ASNodeQueue(stackSize);
+            p_Queue = new PtrQueue(stackSize);
 
             int sz = sizeof(ASNode);
 
@@ -43,13 +43,13 @@ public static partial class Pathfinder {
 
         public bool search(ASNode* firstNode, ASNode* endNode) {
             //return searchRecursive(firstNode, 0);
-            ASNodeQueue nodeStack = p_Queue;
+            PtrQueue nodeStack = p_Queue;
             nodeStack.Clear();
             nodeStack.Push(firstNode);
 
             int count = 1;
             while (count != 0) {
-                ASNode* current = nodeStack.Pop();
+                ASNode* current = (ASNode*)nodeStack.Pop();
                 (*current).State = ASNodeState.CLOSED;
                 count--;
 
@@ -129,7 +129,6 @@ public static partial class Pathfinder {
 
         }
         public void getAdjacent(ASNode* current) {
-
             //zero fill the current adjacent nodes
             ASNode** buffer = p_AdjacentNodes;
             zeroAdjacent(buffer);
@@ -137,8 +136,8 @@ public static partial class Pathfinder {
             //populate adjacent
             short currentX = (short)((current - p_NodeMatrix) % p_Width);
             short currentY = (short)((current - p_NodeMatrix) / p_Width);
-
             float currentG = (*current).G;
+
             getAdjacentLocations(currentX, currentY, p_AdjacentLocations);
 
             //iterate through each adjacent location
@@ -217,7 +216,7 @@ public static partial class Pathfinder {
             int dX = x2 - x1;
             int dY = y2 - y1;
 
-            //return (dX * dX) + (dY * dY);
+            return (dX * dX) + (dY * dY);
 
             return (float)Math.Sqrt(
                 (dX * dX) +
@@ -229,7 +228,6 @@ public static partial class Pathfinder {
         private static void resetNodeMatrix(ASNode* matrix, int w, int h) {
             ZeroMemory((byte*)matrix, (w * h) * sizeof(ASNode));
         }
-
 
         private static ASNode* initNodeMatrix(int w, int h) {
             //allocate the matrix
@@ -243,7 +241,6 @@ public static partial class Pathfinder {
             adjacentLocations = (int*)Marshal.AllocHGlobal(16 * sizeof(int));
         }
 
-
         public int Width { get { return p_Width; } }
         public int Height { get { return p_Height; } }
         public Size Size {
@@ -252,9 +249,22 @@ public static partial class Pathfinder {
             }
         }
         public void Dispose() {
+            //already disposed?
+            if (p_AdjacentLocations == (int*)0) {
+                return;
+            }
+
             Marshal.FreeHGlobal((IntPtr)p_AdjacentNodes);
             Marshal.FreeHGlobal((IntPtr)p_AdjacentLocations);
             Marshal.FreeHGlobal((IntPtr)p_NodeMatrix);
+            p_Queue.Dispose();
+
+            p_AdjacentNodes = (ASNode**)0;
+            p_AdjacentLocations = (int*)0;
+            p_NodeMatrix = (ASNode*)0;
+        }
+        ~ASContext() {
+            Dispose();
         }
     }
 }

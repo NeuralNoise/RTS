@@ -20,13 +20,6 @@ public static unsafe partial class MapGenerator {
         //define the noise generators for the terrain/resource
         Random seed = new Random();
         PerlinNoise terrainNoise = new PerlinNoise(seed);
-            /*new PerlinNoise(
-            1,
-            .1,
-            1,
-            1,
-            seed.Next(0, int.MaxValue));
-            */
 
         //use perlin noise to generate terrain (check if
         //the heighmap for each pixel is within a range for a resource
